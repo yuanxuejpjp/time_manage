@@ -667,7 +667,7 @@ def feedback(schedule_id):
 
 
 def update_reward_progress(category, hours):
-    """更新奖励进度 - 完成日程增加打卡次数"""
+    """更新奖励进度 - 完成日程增加打卡次数和时长"""
     progress = RewardProgress.query.filter_by(
         user_id=current_user.id,
         category=category
@@ -678,13 +678,16 @@ def update_reward_progress(category, hours):
             user_id=current_user.id,
             category=category,
             total_points=0,
+            total_hours=0.0,
             checkin_count=0
         )
         db.session.add(progress)
 
-    # 完成日程增加打卡次数
+    # 完成日程增加打卡次数和时长
     progress.checkin_count += 1
+    progress.total_hours = (progress.total_hours or 0) + hours
     progress.last_updated = datetime.now()
+    db.session.commit()  # 添加提交
 
 
 @schedule_bp.route('/<int:schedule_id>/toggle_status', methods=['POST'])
@@ -712,6 +715,8 @@ def toggle_status(schedule_id):
                        datetime.combine(schedule.date, schedule.start_time)).total_seconds() / 3600
             if schedule.category:
                 update_reward_progress(schedule.category, duration)
+            # 无论是否有分类，都需要提交状态更新
+            db.session.commit()
 
         # 如果有关联任务且完成，更新任务状态
         if schedule.task_id and new_status == 'completed':
@@ -721,8 +726,11 @@ def toggle_status(schedule_id):
                 if all(s.status == 'completed' for s in all_schedules):
                     task.status = 'completed'
                     task.completed_at = datetime.now()
+                    db.session.commit()
 
-        db.session.commit()
+        # 对于非完成状态，也需要提交
+        if new_status != 'completed':
+            db.session.commit()
 
         status_map = {
             'scheduled': '已安排',
