@@ -211,6 +211,7 @@ class RewardProgress(db.Model):
     # 进度信息
     category = db.Column(db.String(50), nullable=False, index=True)  # 分类
     total_points = db.Column(db.Integer, default=0)  # 该分类累计积分
+    total_hours = db.Column(db.Float, default=0.0)  # 该分类累计时长
     checkin_count = db.Column(db.Integer, default=0)  # 打卡次数
     last_updated = db.Column(db.DateTime, default=datetime.utcnow)
 
