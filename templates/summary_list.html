@@ -3,24 +3,35 @@
 {% block title %}总结报表 - 时间掌控者{% endblock %}
 
 {% block content %}
+<!-- 加载遮罩层 -->
+<div id="loadingOverlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; display: none;">
+    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: white;">
+        <div class="spinner-border text-light" role="status" style="width: 3rem; height: 3rem;">
+            <span class="visually-hidden">加载中...</span>
+        </div>
+        <p class="mt-3" style="font-size: 1.2rem;">🤖 正在生成AI分析，请稍候...</p>
+        <p class="text-muted small">这可能需要30-90秒</p>
+    </div>
+</div>
+
 <div class="row">
     <div class="col-12">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h2><i class="bi bi-graph-up"></i> 总结报表</h2>
             <div>
-                <form method="POST" action="{{ url_for('summary.generate_summary') }}" class="d-inline">
+                <form method="POST" action="{{ url_for('summary.generate_summary') }}" class="d-inline" onsubmit="showGenerating(event, '日报')">
                     <input type="hidden" name="type" value="daily">
                     <button type="submit" class="btn btn-primary me-2">
                         <i class="bi bi-calendar-day"></i> 生成日报
                     </button>
                 </form>
-                <form method="POST" action="{{ url_for('summary.generate_summary') }}" class="d-inline">
+                <form method="POST" action="{{ url_for('summary.generate_summary') }}" class="d-inline" onsubmit="showGenerating(event, '周报')">
                     <input type="hidden" name="type" value="weekly">
                     <button type="submit" class="btn btn-outline-primary me-2">
                         <i class="bi bi-calendar-week"></i> 生成周报
                     </button>
                 </form>
-                <form method="POST" action="{{ url_for('summary.generate_summary') }}" class="d-inline">
+                <form method="POST" action="{{ url_for('summary.generate_summary') }}" class="d-inline" onsubmit="showGenerating(event, '月报')">
                     <input type="hidden" name="type" value="monthly">
                     <button type="submit" class="btn btn-outline-primary">
                         <i class="bi bi-calendar-month"></i> 生成月报
@@ -133,6 +144,47 @@
 
 {% block extra_js %}
 <script>
+// 显示生成中的遮罩层
+function showGenerating(event, reportType) {
+    event.preventDefault();
+    const overlay = document.getElementById('loadingOverlay');
+    overlay.style.display = 'block';
+
+    // 获取表单并提交
+    const form = event.target.form;
+    const formData = new FormData(form);
+
+    // 使用fetch提交，以便在完成后跳转
+    fetch(form.action, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        // 服务器会重定向到总结详情页
+        if (response.redirected) {
+            window.location.href = response.url;
+        } else {
+            return response.text().then(html => {
+                // 如果没有重定向，手动解析响应并跳转
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const summaryLink = doc.querySelector('a[href*="/summary/"]');
+                if (summaryLink) {
+                    window.location.href = summaryLink.href;
+                } else {
+                    // 如果找不到链接，刷新页面
+                    window.location.reload();
+                }
+            });
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        overlay.style.display = 'none';
+        alert('生成失败，请稍后重试');
+    });
+}
+
 let pieChart, barChart;
 
 function loadChartData(period) {
