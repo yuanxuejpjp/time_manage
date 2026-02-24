@@ -245,6 +245,13 @@ def generate_summary():
 
     # 构建复盘数据
     reflection_data = []
+    total_deep_work_hours = 0
+    long_term_value_count = 0
+    changed_judgment_count = 0
+    time_waste_list = []
+    key_insights = []
+    mit_list = []
+
     for r in reflections:
         reflection_data.append({
             'date': r.reflection_date.strftime('%Y-%m-%d'),
@@ -260,38 +267,110 @@ def generate_summary():
             'tomorrow_mit': r.tomorrow_mit or ''
         })
 
-    # AI生成总结和建议
-    prompt = f"""请分析以下时间管理数据，生成{title}：
+        # 统计复盘数据
+        if r.deep_work_hours:
+            total_deep_work_hours += r.deep_work_hours
+        if r.is_long_term_value:
+            long_term_value_count += 1
+        if r.changed_judgment:
+            changed_judgment_count += 1
+        if r.time_waste:
+            time_waste_list.append({
+                'date': r.reflection_date.strftime('%m-%d'),
+                'waste': r.time_waste,
+                'reason': r.waste_reason or ''
+            })
+        if r.key_insight:
+            key_insights.append({
+                'date': r.reflection_date.strftime('%m-%d'),
+                'insight': r.key_insight
+            })
+        if r.tomorrow_mit:
+            mit_list.append({
+                'date': r.reflection_date.strftime('%m-%d'),
+                'mit': r.tomorrow_mit
+            })
 
-【统计数据】
-- 时间范围：{analysis_data['period']}
-- 总任务数：{analysis_data['total_tasks']}
-- 已完成任务：{analysis_data['completed_tasks']}
-- 完成率：{analysis_data['completion_rate']}
-- 总工作时长：{analysis_data['total_hours']}小时
+    # 计算复盘统计
+    reflection_stats = {
+        'total_days': len(reflections),
+        'total_deep_work_hours': round(total_deep_work_hours, 1),
+        'avg_deep_work_hours': round(total_deep_work_hours / len(reflections), 1) if reflections else 0,
+        'long_term_value_ratio': round(long_term_value_count / len(reflections) * 100, 1) if reflections else 0,
+        'changed_judgment_count': changed_judgment_count,
+        'has_insights': len(key_insights) > 0,
+        'has_waste': len(time_waste_list) > 0
+    }
 
-【分类统计】
-{json.dumps(category_hours, ensure_ascii=False, indent=2)}
+    # 如果没有复盘数据，提示用户
+    if not reflections:
+        summary.ai_summary = f'暂无{title}的每日复盘数据。请先在"每日复盘"中记录这段时间的复盘内容，再生成报告。'
+        summary.ai_suggestions = '💡 建议每天花5-10分钟进行复盘，记录：\n1. 今日核心推进\n2. 深度工作时间\n3. 关键领悟\n4. 时间浪费分析\n5. 明日关键任务'
+        db.session.commit()
+        flash(f'{title}生成失败：暂无复盘数据', 'warning')
+        return redirect(url_for('summary.view_summary', summary_id=summary.id))
 
-【任务详情】
-{json.dumps(analysis_data['task_details'], ensure_ascii=False, indent=2)}
+    # AI生成总结和建议 - 主要基于复盘数据
+    prompt = f"""你是专业的时间管理分析师。请根据以下每日复盘数据，生成{title}：
 
-【每日复盘数据】
-{json.dumps(reflection_data, ensure_ascii=False, indent=2) if reflection_data else '暂无复盘数据'}
+【时间范围】
+{analysis_data['period']}
 
-请生成一份包含以下内容的总结：
-1. **总体评价**：简述这段时间的效率表现
-2. **完成情况分析**：分析完成率，找出完成/未完成的原因
-3. **每日复盘分析**：结合每日复盘数据，总结：
-   - 核心推进成果和长期价值创造
-   - 深度工作时长和高能时段规律
-   - 关键领悟和认知更新
-   - 时间浪费问题及原因分析
-   - 明日关键任务(MIT)的执行情况
-4. **时间分配建议**：根据分类统计，给出时间分配优化建议
-5. **改进措施**：针对发现的问题，结合复盘数据，给出具体可行的改进建议
+【复盘统计】
+- 复盘天数：{reflection_stats['total_days']}天
+- 深度工作总时长：{reflection_stats['total_deep_work_hours']}小时
+- 平均每日深度工作：{reflection_stats['avg_deep_work_hours']}小时
+- 产生长期价值天数：{long_term_value_count}天（占比{reflection_stats['long_term_value_ratio']}%）
+- 改变原有判断次数：{changed_judgment_count}次
 
-请用中文输出，条理清晰，语气友好而专业。"""
+【每日详细复盘】
+{json.dumps(reflection_data, ensure_ascii=False, indent=2)}
+
+请生成一份包含以下内容的{title}：
+
+## 📊 一、总体评价
+根据复盘数据，对这段时间的效率表现进行总体评价。重点关注：
+- 深度工作投入情况（平均每日{reflection_stats['avg_deep_work_hours']}小时）
+- 长期价值创造比例（{reflection_stats['long_term_value_ratio']}%）
+- 认知更新情况（{changed_judgment_count}次改变判断）
+
+## 🎯 二、核心推进成果
+总结每天的核心推进内容，分析：
+- 哪些推进产生了长期价值？
+- 核心推进的质量如何？
+- 是否有重复或低效的推进？
+
+## ⏰ 三、深度工作分析
+- 深度工作总时长：{reflection_stats['total_deep_work_hours']}小时
+- 平均每日：{reflection_stats['avg_deep_work_hours']}小时
+- 高能时段规律是什么？
+- 深度工作效率如何提升？
+
+## 💡 四、关键领悟总结
+{json.dumps(key_insights, ensure_ascii=False, indent=2) if key_insights else '暂无关键领悟记录'}
+
+分析这些领悟：
+- 哪些认知最有价值？
+- 哪些判断被改变了？
+- 对未来有什么影响？
+
+## ⚠️ 五、时间浪费分析
+{json.dumps(time_waste_list, ensure_ascii=False, indent=2) if time_waste_list else '暂无时间浪费记录'}
+
+识别主要的时间浪费模式：
+- 最常见的浪费类型是什么？
+- 根本原因是什么？
+- 如何避免？
+
+## 📋 六、明日关键任务(MIT)执行回顾
+{json.dumps(mit_list, ensure_ascii=False, indent=2) if mit_list else '暂无MIT记录'}
+
+分析MIT的设定和执行情况。
+
+## 🚀 七、改进建议
+基于以上分析，给出3-5条具体可行的改进建议。
+
+请用中文输出，条理清晰，语气友好而专业。每部分用##标题标注。"""
 
     print(f"[DEBUG] 开始调用DeepSeek API生成{title}...")
     ai_response = call_deepseek_api(prompt, max_tokens=2000)
