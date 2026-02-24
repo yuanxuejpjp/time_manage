@@ -3,7 +3,7 @@ from flask_login import login_required, current_user
 from datetime import datetime, timedelta, date
 import requests
 import json
-from models import db, Summary, Schedule, Feedback, Task
+from models import db, Summary, Schedule, Feedback, Task, DailyReflection
 from sqlalchemy import func, and_
 
 summary_bp = Blueprint('summary', __name__)
@@ -228,6 +228,29 @@ def generate_summary():
                     'notes': ''
                 })
 
+    # 获取每日复盘数据
+    reflections = DailyReflection.query.filter(
+        DailyReflection.user_id == current_user.id,
+        DailyReflection.reflection_date.between(start_date, end_date)
+    ).order_by(DailyReflection.reflection_date).all()
+
+    # 构建复盘数据
+    reflection_data = []
+    for r in reflections:
+        reflection_data.append({
+            'date': r.reflection_date.strftime('%Y-%m-%d'),
+            'core_progress': r.core_progress or '',
+            'is_long_term_value': r.is_long_term_value,
+            'deep_work_hours': r.deep_work_hours or 0,
+            'high_energy_period': r.high_energy_period or '',
+            'key_insight': r.key_insight or '',
+            'changed_judgment': r.changed_judgment,
+            'influences_future': r.influences_future,
+            'time_waste': r.time_waste or '',
+            'waste_reason': r.waste_reason or '',
+            'tomorrow_mit': r.tomorrow_mit or ''
+        })
+
     # AI生成总结和建议
     prompt = f"""请分析以下时间管理数据，生成{title}：
 
@@ -244,11 +267,20 @@ def generate_summary():
 【任务详情】
 {json.dumps(analysis_data['task_details'], ensure_ascii=False, indent=2)}
 
+【每日复盘数据】
+{json.dumps(reflection_data, ensure_ascii=False, indent=2) if reflection_data else '暂无复盘数据'}
+
 请生成一份包含以下内容的总结：
 1. **总体评价**：简述这段时间的效率表现
 2. **完成情况分析**：分析完成率，找出完成/未完成的原因
-3. **时间分配建议**：根据分类统计，给出时间分配优化建议
-4. **改进措施**：针对发现的问题，给出具体可行的改进建议
+3. **每日复盘分析**：结合每日复盘数据，总结：
+   - 核心推进成果和长期价值创造
+   - 深度工作时长和高能时段规律
+   - 关键领悟和认知更新
+   - 时间浪费问题及原因分析
+   - 明日关键任务(MIT)的执行情况
+4. **时间分配建议**：根据分类统计，给出时间分配优化建议
+5. **改进措施**：针对发现的问题，结合复盘数据，给出具体可行的改进建议
 
 请用中文输出，条理清晰，语气友好而专业。"""
 
