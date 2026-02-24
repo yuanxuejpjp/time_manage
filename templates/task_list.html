@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block title %}任务管理 - 时间掌控者{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="bi bi-list-task"></i> 任务管理</h2>
+            <div>
+                <a href="{{ url_for('schedule.view_schedule') }}" class="btn btn-outline-primary me-2">
+                    <i class="bi bi-calendar3"></i> 查看日程
+                </a>
+                <a href="{{ url_for('tasks.new_task') }}" class="btn btn-primary">
+                    <i class="bi bi-plus-lg"></i> 新建任务
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 筛选和排序 -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label">状态</label>
+                <select name="status" class="form-select">
+                    <option value="">全部</option>
+                    <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>待完成</option>
+                    <option value="completed" {% if status_filter == 'completed' %}selected{% endif %}>已完成</option>
+                    <option value="cancelled" {% if status_filter == 'cancelled' %}selected{% endif %}>已取消</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">优先级</label>
+                <select name="priority" class="form-select">
+                    <option value="">全部</option>
+                    <option value="高" {% if priority_filter == '高' %}selected{% endif %}>高</option>
+                    <option value="中" {% if priority_filter == '中' %}selected{% endif %}>中</option>
+                    <option value="低" {% if priority_filter == '低' %}selected{% endif %}>低</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">分类</label>
+                <select name="category" class="form-select">
+                    <option value="">全部</option>
+                    {% for cat in categories %}
+                        <option value="{{ cat }}" {% if category_filter == cat %}selected{% endif %}>{{ cat }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">排序</label>
+                <select name="sort" class="form-select">
+                    <option value="deadline" {% if sort_by == 'deadline' %}selected{% endif %}>截止日期</option>
+                    <option value="priority" {% if sort_by == 'priority' %}selected{% endif %}>优先级</option>
+                    <option value="created" {% if sort_by == 'created' %}selected{% endif %}>创建时间</option>
+                </select>
+            </div>
+            <div class="col-12">
+                <button type="submit" class="btn btn-outline-primary">
+                    <i class="bi bi-funnel"></i> 筛选
+                </button>
+                <a href="{{ url_for('tasks.list_tasks') }}" class="btn btn-outline-secondary">重置</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 任务列表 -->
+<div class="row">
+    {% if tasks %}
+        {% for task in tasks %}
+            <div class="col-md-6 col-lg-4 mb-3">
+                <div class="card h-100 {% if task.status == 'completed' %}border-success{% elif task.status == 'cancelled' %}border-secondary{% endif %}">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h5 class="card-title mb-0">{{ task.title }}</h5>
+                            <span class="badge priority-{{ task.priority|priority_class }}">
+                                {{ task.priority }}
+                            </span>
+                        </div>
+
+                        {% if task.description %}
+                            <p class="card-text small text-muted">{{ task.description[:100] }}</p>
+                        {% endif %}
+
+                        <div class="mb-2">
+                            <span class="badge bg-secondary">{{ task.category }}</span>
+                            <span class="badge bg-info">预计 {{ task.estimated_hours }}h</span>
+                            <span class="badge status-{{ task.status|status_class }}">
+                                {{ task.status|status_filter }}
+                            </span>
+                        </div>
+
+                        {% if task.deadline %}
+                            <p class="card-text small text-muted mb-2">
+                                <i class="bi bi-calendar"></i> 截止: {{ task.deadline|date_filter }}
+                            </p>
+                        {% endif %}
+
+                        {% if task.is_recurring %}
+                            <p class="card-text small text-muted mb-2">
+                                <i class="bi bi-arrow-repeat"></i>
+                                重复: {{ task.recurring_type|recurring_type_filter }}
+                            </p>
+                        {% endif %}
+                    </div>
+                    <div class="card-footer bg-white border-top">
+                        <div class="btn-group w-100" role="group">
+                            {% if task.status == 'pending' %}
+                                <form method="POST" action="{{ url_for('tasks.complete_task', task_id=task.id) }}" class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-outline-success">完成</button>
+                                </form>
+                            {% endif %}
+                            <a href="{{ url_for('tasks.edit_task', task_id=task.id) }}" class="btn btn-sm btn-outline-primary">编辑</a>
+                            <form method="POST" action="{{ url_for('tasks.delete_task', task_id=task.id) }}"
+                                  class="d-inline" onsubmit="return confirm('确定删除此任务？')">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">删除</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    {% else %}
+        <div class="col-12">
+            <div class="text-center py-5">
+                <i class="bi bi-inbox text-muted" style="font-size: 4rem;"></i>
+                <p class="text-muted mt-3">没有找到任务</p>
+                <a href="{{ url_for('tasks.new_task') }}" class="btn btn-primary">
+                    <i class="bi bi-plus-lg"></i> 创建第一个任务
+                </a>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+
+{% block title %}固定日程 - 时间掌控者{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="bi bi-calendar-week"></i> 固定日程</h2>
+            <div>
+                <a href="{{ url_for('fixed.week_schedule') }}" class="btn btn-outline-primary me-2">
+                    <i class="bi bi-calendar-week"></i> 本周日程
+                </a>
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addScheduleModal">
+                    <i class="bi bi-plus-lg"></i> 添加固定日程
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 周日程展示 -->
+<div class="row mb-4">
+    {% set weekdays = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'] %}
+    {% for day in range(7) %}
+    <div class="col-md-3 mb-3">
+        <div class="card h-100">
+            <div class="card-header bg-{{ ['primary', 'secondary', 'success', 'danger', 'warning', 'info', 'dark'][day] }} text-white">
+                <h6 class="mb-0">{{ weekdays[day] }}</h6>
+            </div>
+            <div class="card-body py-2">
+                {% set day_schedules = schedules|selectattr('day_of_week', day)|list %}
+                {% if day_schedules %}
+                    {% for sched in day_schedules %}
+                        <div class="card mb-2 border-{{ sched.color }}" style="border-left: 4px solid !important;">
+                            <div class="card-body p-2">
+                                <div class="d-flex justify-content-between">
+                                    <h6 class="mb-1">{{ sched.title }}</h6>
+                                    <small class="text-muted">{{ sched.start_time|time_filter }}-{{ sched.end_time|time_filter }}</small>
+                                </div>
+                                                                {% if sched.location %}
+                                    <p class="small text-muted mb-1"><i class="bi bi-geo-alt"></i> {{ sched.location }}</p>
+                                                                {% endif %}
+                                                                {% if sched.category %}
+                                                                    <span class="badge bg-secondary">{{ sched.category }}</span>
+                                                                {% endif %}
+                                                            </div>
+                                                        </div>
+                                                    {% endfor %}
+                                                {% else %}
+                                                    <p class="text-muted small text-center py-2">无安排</p>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+<!-- 说明 -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <h5><i class="bi bi-info-circle"></i> 固定日程说明</h5>
+                <p>固定日程用于管理每周重复的活动，例如：</p>
+                <ul>
+                    <li>每周一至周五的上课时间</li>
+                    <li>每周三下午的社团活动</li>
+                    <li>每周六的运动训练</li>
+                    <li>持续8周的课程或训练营</li>
+                </ul>
+                <p class="text-muted mb-0">固定日程会自动出现在每日计划的生成中。</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 添加固定日程模态框 -->
+<div class="modal fade" id="addScheduleModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-plus-circle"></i> 添加固定日程</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('fixed.add_schedule') }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="title" class="form-label">活动名称 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="title" name="title" required>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="day_of_week" class="form-label">星期 <span class="text-danger">*</span></label>
+                            <select class="form-select" id="day_of_week" name="day_of_week" required>
+                                <option value="0">周一</option>
+                                <option value="1">周二</option>
+                                <option value="2">周三</option>
+                                <option value="3">周四</option>
+                                <option value="4">周五</option>
+                                <option value="5">周六</option>
+                                <option value="6">周日</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="start_time" class="form-label">开始时间 <span class="text-danger">*</span></label>
+                            <input type="time" class="form-control" id="start_time" name="start_time" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="end_time" class="form-label">结束时间 <span class="text-danger">*</span></label>
+                            <input type="time" class="form-control" id="end_time" name="end_time" required>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="category" class="form-label">分类</label>
+                            <input type="text" class="form-control" id="category" name="category" value="上课">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="location" class="form-label">地点</label>
+                            <input type="text" class="form-control" id="location" name="location" placeholder="如：教学楼201">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="color" class="form-label">颜色标记</label>
+                            <select class="form-select" id="color" name="color">
+                                <option value="primary">蓝色</option>
+                                <option value="success">绿色</option>
+                                <option value="warning">橙色</option>
+                                <option value="danger">红色</option>
+                                <option value="info">青色</option>
+                                <option value="dark">灰色</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="start_date" class="form-label">开始日期 <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" id="start_date" name="start_date" required>
+                            <small class="text-muted">从哪一天开始</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="end_date" class="form-label">结束日期（可选）</label>
+                            <input type="date" class="form-control" id="end_date" name="end_date">
+                            <small class="text-muted">如：8周课程结束日期</small>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">描述</label>
+                        <textarea class="form-control" id="description" name="description" rows="2"
+                                  placeholder="备注信息..."></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="reminder_minutes" class="form-label">提前提醒</label>
+                        <input type="number" class="form-control" id="reminder_minutes" name="reminder_minutes"
+                               value="30" min="0" step="5">
+                        <small class="text-muted">提前多少分钟提醒（分钟）</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">创建</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

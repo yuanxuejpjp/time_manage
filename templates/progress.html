@@ -1,0 +1,293 @@
+{% extends "base.html" %}
+
+{% block title %}进度中心 - 时间掌控者{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2 class="mb-4"><i class="bi bi-trophy"></i> 进度中心</h2>
+    </div>
+</div>
+
+<!-- 积分总览卡片 -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body text-center">
+                <h6 class="card-title">我的积分</h6>
+                <h2 class="mb-0">{{ user.total_points }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body text-center">
+                <h6 class="card-title">累计获得</h6>
+                <h2 class="mb-0">{{ total_points_earned }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body text-center">
+                <h6 class="card-title">总打卡次数</h6>
+                <h2 class="mb-0">{{ total_checkins }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-dark">
+            <div class="card-body text-center">
+                <h6 class="card-title">活跃习惯</h6>
+                <h2 class="mb-0">{{ today_habits|length }}</h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- 今日习惯打卡 -->
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-calendar-check"></i> 今日习惯打卡</h5>
+                <span class="badge bg-info">{{ today|date_filter }}</span>
+            </div>
+            <div class="card-body">
+                {% if today_habits %}
+                    {% for item in today_habits %}
+                        <div class="card mb-3 border-{{ item.habit.color if item.habit.color else 'primary' }}" style="border-left: 4px solid !important;">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <h6 class="mb-1">
+                                            <i class="bi bi-{{ item.habit.icon }}"></i> {{ item.habit.title }}
+                                        </h6>
+                                        <p class="text-muted small mb-1">
+                                            <i class="bi bi-star-fill text-warning"></i> +{{ item.habit.points_value }} 积分
+                                            <span class="ms-2"><i class="bi bi-fire text-danger"></i> 连续 {{ item.streak }} 天</span>
+                                        </p>
+                                        {% if item.habit.target_value > 1 %}
+                                            <small class="text-muted">目标: {{ item.habit.target_value }}{{ item.habit.target_unit }}</small>
+                                        {% endif %}
+                                    </div>
+                                    {% if item.checked %}
+                                        <span class="badge bg-success">已完成</span>
+                                    {% else %}
+                                        <form method="POST" action="{{ url_for('progress.habit_checkin', habit_id=item.habit.id) }}" class="d-inline">
+                                            <button type="submit" class="btn btn-sm btn-primary">
+                                                <i class="bi bi-check-lg"></i> 打卡
+                                            </button>
+                                        </form>
+                                    {% endif %}
+                                </div>
+                                {% if item.checked %}
+                                    <form method="POST" action="{{ url_for('progress.habit_undo', habit_id=item.habit.id) }}" class="mt-2">
+                                        <button type="submit" class="btn btn-sm btn-outline-warning">撤销</button>
+                                    </form>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted text-center py-3">
+                        <i class="bi bi-inbox"></i> 今天没有需要打卡的习惯
+                    </p>
+                {% endif %}
+            </div>
+            <div class="card-footer">
+                <a href="{{ url_for('habits.list_habits') }}" class="btn btn-outline-primary btn-sm">
+                    <i class="bi bi-gear"></i> 管理习惯
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 奖励兑换 -->
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-gift"></i> 奖励兑换</h5>
+                <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#addRewardModal">
+                    <i class="bi bi-plus-lg"></i> 添加奖励
+                </button>
+            </div>
+            <div class="card-body">
+                {% if available_rewards %}
+                    <div class="row">
+                        {% for reward in available_rewards %}
+                            <div class="col-md-6 mb-3">
+                                <div class="card h-100 {% if user.total_points >= reward.points_required %}border-success{% endif %}">
+                                    <div class="card-body text-center">
+                                        <i class="bi bi-{{ reward.icon }} fs-1 text-primary"></i>
+                                        <h6 class="mt-2">{{ reward.title }}</h6>
+                                        {% if reward.description %}
+                                            <p class="small text-muted">{{ reward.description }}</p>
+                                        {% endif %}
+                                        <h5 class="text-primary">{{ reward.points_required }} 积分</h5>
+                                        {% if user.total_points >= reward.points_required %}
+                                            <form method="POST" action="{{ url_for('progress.redeem_reward', reward_id=reward.id) }}">
+                                                <button type="submit" class="btn btn-sm btn-success">兑换</button>
+                                            </form>
+                                        {% else %}
+                                            <button class="btn btn-sm btn-outline-secondary" disabled>积分不足</button>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-muted text-center py-3">
+                        <i class="bi bi-inbox"></i> 还没有设置奖励
+                    </p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- 分类积分进度 -->
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-graph-up"></i> 分类积分</h5>
+            </div>
+            <div class="card-body">
+                {% if category_progress %}
+                    {% for prog in category_progress %}
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span>{{ prog.category }}</span>
+                                <span>{{ prog.total_points }} 积分 ({{ prog.checkin_count }}次)</span>
+                            </div>
+                            <div class="progress" style="height: 25px;">
+                                {% set max_points = category_progress|map(attribute='total_points')|max %}
+                                {% set percent = (prog.total_points / max_points * 100) if max_points > 0 else 0 %}
+                                <div class="progress-bar bg-primary" role="progressbar" style="width: {{ percent }}%">
+                                    {{ prog.total_points }}
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted text-center py-3">
+                        <i class="bi bi-inbox"></i> 还没有积分记录
+                    </p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- 积分历史 -->
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-clock-history"></i> 积分历史</h5>
+            </div>
+            <div class="card-body">
+                {% if recent_history %}
+                    <div class="list-group list-group-flush">
+                        {% for history in recent_history %}
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <span class="badge bg-{{ 'success' if history.points_change > 0 else 'warning' }}">
+                                        {{ history.points_change }}{{ '+' if history.points_change > 0 else '' }}
+                                    </span>
+                                    <span class="ms-2">{{ history.description }}</span>
+                                </div>
+                                <small class="text-muted">
+                                    {{ history.created_at|datetime_filter }}
+                                    <br>余额: {{ history.balance_after }}
+                                </small>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-muted text-center py-3">
+                        <i class="bi bi-inbox"></i> 还没有积分记录
+                    </p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 已兑换的奖励 -->
+{% if redeemed_rewards %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-check-circle"></i> 已兑换奖励</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for reward in redeemed_rewards %}
+                        <div class="col-md-4 mb-3">
+                            <div class="card border-success">
+                                <div class="card-body text-center">
+                                    <i class="bi bi-{{ reward.icon }} fs-1 text-success"></i>
+                                    <h6 class="mt-2">{{ reward.title }}</h6>
+                                    <small class="text-muted">{{ reward.redeemed_at|datetime_filter }}</small>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- 添加奖励模态框 -->
+<div class="modal fade" id="addRewardModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-gift"></i> 添加奖励</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('progress.add_reward') }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="title" class="form-label">奖励名称 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="title" name="title" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="description" class="form-label">描述</label>
+                        <textarea class="form-control" id="description" name="description" rows="2"></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label for="points_required" class="form-label">所需积分 <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="points_required" name="points_required"
+                                   value="100" min="1" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="icon" class="form-label">图标</label>
+                            <select class="form-select" id="icon" name="icon">
+                                <option value="gift">礼物</option>
+                                <option value="cup-hot">咖啡</option>
+                                <option value="film">电影</option>
+                                <option value="controller">游戏</option>
+                                <option value="book">书籍</option>
+                                <option value="cart-shopping">购物</option>
+                                <option value="airplane">旅行</option>
+                                <option value="music-note">音乐</option>
+                                <option value="trophy">奖杯</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-success">添加</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block title %}编辑重要日子 - 时间掌控者{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0"><i class="bi bi-pencil"></i> 编辑重要日子</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="title" class="form-label">标题 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="title" name="title"
+                               value="{{ imp_date.title }}" required>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="event_date" class="form-label">日期 <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" id="event_date" name="event_date"
+                                   value="{{ imp_date.event_date|date_filter }}" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="event_time" class="form-label">时间</label>
+                            <input type="time" class="form-control" id="event_time" name="event_time"
+                                   value="{{ imp_date.event_time|time_filter if imp_date.event_time else '' }}">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="date_type" class="form-label">类型</label>
+                            <select class="form-select" id="date_type" name="date_type">
+                                <option value="birthday" {% if imp_date.date_type == 'birthday' %}selected{% endif %}>🎂 生日</option>
+                                <option value="anniversary" {% if imp_date.date_type == 'anniversary' %}selected{% endif %}>💝 纪念日</option>
+                                <option value="deadline" {% if imp_date.date_type == 'deadline' %}selected{% endif %}>📅 截止日期</option>
+                                <option value="holiday" {% if imp_date.date_type == 'holiday' %}selected{% endif %}>🎉 节日</option>
+                                <option value="other" {% if imp_date.date_type == 'other' %}selected{% endif %}>📌 其他</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="color" class="form-label">颜色标记</label>
+                            <select class="form-select" id="color" name="color">
+                                <option value="primary" {% if imp_date.color == 'primary' %}selected{% endif %}>蓝色</option>
+                                <option value="success" {% if imp_date.color == 'success' %}selected{% endif %}>绿色</option>
+                                <option value="warning" {% if imp_date.color == 'warning' %}selected{% endif %}>橙色</option>
+                                <option value="danger" {% if imp_date.color == 'danger' %}selected{% endif %}>红色</option>
+                                <option value="info" {% if imp_date.color == 'info' %}selected{% endif %}>青色</option>
+                                <option value="dark" {% if imp_date.color == 'dark' %}selected{% endif %}>灰色</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="remind_days_before" class="form-label">提前提醒</label>
+                            <input type="number" class="form-control" id="remind_days_before" name="remind_days_before"
+                                   value="{{ imp_date.remind_days_before }}" min="0" max="30">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">描述</label>
+                        <textarea class="form-control" id="description" name="description" rows="2">{{ imp_date.description or '' }}</textarea>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save"></i> 保存
+                        </button>
+                        <a href="{{ url_for('fixed.list_dates') }}" class="btn btn-outline-secondary">取消</a>
+                        <form method="POST" action="{{ url_for('fixed.complete_date', date_id=imp_date.id) }}">
+                            <button type="submit" class="btn btn-outline-{% if imp_date.is_completed %}success{% else %warning{% endif %}">
+                                <i class="bi bi-{% if imp_date.is_completed %}check2{% else %clock{% endif %}"></i>
+                                {% if imp_date.is_completed %}标记未完成{% else %}标记已完成{% endif %}
+                            </button>
+                        </form>
+                        <form method="POST" action="{{ url_for('fixed.delete_date', date_id=imp_date.id) }}"
+                              onsubmit="return confirm('确定删除此重要日子？')">
+                            <button type="submit" class="btn btn-outline-danger">删除</button>
+                        </form>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block title %}复盘统计 - 时间掌控者{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="bi bi-graph-up"></i> 复盘统计分析</h2>
+            <a href="{{ url_for('reflection.daily_reflection') }}" class="btn btn-primary">
+                <i class="bi bi-plus-lg"></i> 今日复盘
+            </a>
+        </div>
+
+        <!-- 统计卡片 -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h3 class="card-title text-primary">{{ stats.total_reflections }}</h3>
+                        <p class="card-text text-muted">复盘天数</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h3 class="card-title text-success">{{ stats.avg_deep_work }}h</h3>
+                        <p class="card-text text-muted">平均深度工作</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h3 class="card-title text-info">{{ stats.long_term_ratio }}%</h3>
+                        <p class="card-text text-muted">长期价值占比</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h3 class="card-title text-warning">{{ stats.changed_judgment_ratio }}%</h3>
+                        <p class="card-text text-muted">改变判断占比</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 图表 -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">认知影响分析</div>
+                    <div class="card-body">
+                        <canvas id="cognitionChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">长期价值趋势</div>
+                    <div class="card-body">
+                        <canvas id="valueChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 最近复盘 -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">最近7天复盘</h5>
+            </div>
+            <div class="card-body">
+                {% if stats.recent_reflections %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>日期</th>
+                                    <th>核心推进</th>
+                                    <th>深度工作</th>
+                                    <th>长期价值</th>
+                                    <th>明日MIT</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for ref in stats.recent_reflections %}
+                                    <tr>
+                                        <td>{{ ref.reflection_date|date_filter }}</td>
+                                        <td>{{ ref.core_progress[:20] }}{{ '...' if ref.core_progress and ref.core_progress|length > 20 else '' }}</td>
+                                        <td>{{ ref.deep_work_hours }}h</td>
+                                        <td>
+                                            {% if ref.is_long_term_value %}
+                                                <i class="bi bi-check-circle text-success"></i>
+                                            {% else %}
+                                                <i class="bi bi-dash-circle text-muted"></i>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ ref.tomorrow_mit[:20] }}{{ '...' if ref.tomorrow_mit and ref.tomorrow_mit|length > 20 else '' }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted text-center">暂无数据</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// 认知影响图表
+const cognitionCtx = document.getElementById('cognitionChart').getContext('2d');
+new Chart(cognitionCtx, {
+    type: 'doughnut',
+    data: {
+        labels: ['改变判断', '未改变判断'],
+        datasets: [{
+            data: [{{ stats.changed_judgment_ratio }}, {{ 100 - stats.changed_judgment_ratio }}],
+            backgroundColor: ['#ffc107', '#6c757d']
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: {
+                position: 'bottom'
+            }
+        }
+    }
+});
+
+// 长期价值图表
+const valueCtx = document.getElementById('valueChart').getContext('2d');
+new Chart(valueCtx, {
+    type: 'doughnut',
+    data: {
+        labels: ['长期价值', '短期任务'],
+        datasets: [{
+            data: [{{ stats.long_term_ratio }}, {{ 100 - stats.long_term_ratio }}],
+            backgroundColor: ['#0d6efd', '#6c757d']
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: {
+                position: 'bottom'
+            }
+        }
+    }
+});
+</script>
+{% endblock %}

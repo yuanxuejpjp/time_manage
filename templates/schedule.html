@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+
+{% block title %}日程安排 - 时间掌控者{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="bi bi-calendar3"></i> 日程安排</h2>
+            <div>
+                <a href="{{ url_for('schedule.view_schedule', date=(prev_date|date_filter)) }}" class="btn btn-outline-primary">
+                    <i class="bi bi-chevron-left"></i> 前一天
+                </a>
+                <span class="mx-3">{{ view_date|date_filter_long }}</span>
+                <a href="{{ url_for('schedule.view_schedule', date=(next_date|date_filter)) }}" class="btn btn-outline-primary">
+                    后一天 <i class="bi bi-chevron-right"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 生成智能日程 -->
+<div class="card mb-4">
+    <div class="card-body">
+        <h5><i class="bi bi-magic"></i> AI 智能排程</h5>
+        <p class="text-muted mb-3">让 AI 帮你根据待办任务自动生成合理的时间安排</p>
+        <form method="POST" action="{{ url_for('schedule.generate_schedule') }}" class="d-inline" onsubmit="return disableGenerateButton(this, 'today')">
+            <input type="hidden" name="type" value="today">
+            <button type="submit" class="btn btn-primary me-2" name="generate_today">
+                <i class="bi bi-calendar-day"></i> 生成今日计划
+            </button>
+        </form>
+        <form method="POST" action="{{ url_for('schedule.generate_schedule') }}" class="d-inline" onsubmit="return disableGenerateButton(this, 'week')">
+            <input type="hidden" name="type" value="week">
+            <button type="submit" class="btn btn-outline-primary" name="generate_week">
+                <i class="bi bi-calendar-week"></i> 生成本周计划
+            </button>
+        </form>
+        <span id="loading-msg" class="text-info ms-3" style="display:none;">
+            <i class="bi bi-hourglass-split"></i> 正在生成中，请稍候...
+        </span>
+    </div>
+</div>
+
+<!-- 时间轴日程 -->
+<div class="row">
+    <div class="col-12">
+        {% if schedules %}
+            <div class="schedule-timeline">
+                {% for sched in schedules %}
+                    <div class="schedule-item {{ sched.status }} {% if sched.is_meeting %}schedule-meeting{% endif %}">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <h5 class="mb-1">
+                                            {% if sched.is_meeting %}
+                                                <span class="badge meeting-badge me-2"><i class="bi bi-people-fill"></i> 会议</span>
+                                            {% endif %}
+                                            {{ sched.task_title }}
+                                            {% if sched.category and not sched.is_meeting %}
+                                                <span class="badge bg-secondary ms-2">{{ sched.category }}</span>
+                                            {% endif %}
+                                        </h5>
+                                        <p class="text-muted mb-2">
+                                            <i class="bi bi-clock"></i>
+                                            {{ sched.start_time|time_filter }} - {{ sched.end_time|time_filter }}
+                                            {% if sched.location %}
+                                                | <i class="bi bi-geo-alt"></i> {{ sched.location }}
+                                            {% endif %}
+                                            {% if sched.task and sched.task.estimated_hours %}
+                                                | 预计 {{ sched.task.estimated_hours }}h
+                                            {% endif %}
+                                        </p>
+                                        {% if sched.ai_reasoning %}
+                                            <p class="small text-info mb-0">
+                                                <i class="bi bi-lightbulb"></i> {{ sched.ai_reasoning }}
+                                            </p>
+                                        {% endif %}
+                                    </div>
+                                    <div class="text-end">
+                                        <span class="badge bg-{% if sched.status == 'completed' %}success{% elif sched.status == 'partial' %}warning{% elif sched.status == 'cancelled' %}secondary{% else %}primary{% endif %}">
+                                            {{ sched.status|status_filter }}
+                                        </span>
+                                        <div class="mt-2 btn-group">
+                                            <!-- 快捷完成按钮 -->
+                                            {% if sched.status != 'completed' %}
+                                                <button type="button" class="btn btn-sm btn-success"
+                                                        onclick="toggleScheduleStatus({{ sched.id }}, 'completed')"
+                                                        title="标记为已完成">
+                                                    <i class="bi bi-check-circle"></i> 完成
+                                                </button>
+                                            {% endif %}
+                                            {% if sched.status != 'scheduled' %}
+                                                <button type="button" class="btn btn-sm btn-outline-secondary"
+                                                        onclick="toggleScheduleStatus({{ sched.id }}, 'scheduled')"
+                                                        title="重置为已安排">
+                                                    <i class="bi bi-arrow-counterclockwise"></i>
+                                                </button>
+                                            {% endif %}
+                                            <a href="{{ url_for('schedule.feedback', schedule_id=sched.id) }}"
+                                               class="btn btn-sm btn-outline-secondary"
+                                               title="详细反馈">
+                                                <i class="bi bi-chat"></i>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-calendar-x text-muted" style="font-size: 4rem;"></i>
+                <p class="text-muted mt-3">这一天还没有日程安排</p>
+                <p class="text-muted">点击上方按钮让 AI 帮你生成智能日程</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+let isGenerating = false;
+
+function disableGenerateButton(form, type) {
+    if (isGenerating) {
+        return false; // 防止重复提交
+    }
+
+    isGenerating = true;
+
+    // 禁用所有生成按钮
+    const buttons = document.querySelectorAll('button[name^="generate"]');
+    buttons.forEach(btn => {
+        btn.disabled = true;
+    });
+
+    // 显示加载提示
+    document.getElementById('loading-msg').style.display = 'inline';
+
+    return true; // 允许表单提交
+}
+
+function toggleScheduleStatus(scheduleId, newStatus) {
+    // 找到被点击的按钮
+    const buttons = document.querySelectorAll(`[onclick*="toggleScheduleStatus(${scheduleId}"]`);
+    const btn = buttons[0];
+
+    // 显示加载状态
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="bi bi-hourglass-split"></i> 处理中...';
+    }
+
+    fetch(`/schedule/${scheduleId}/toggle_status`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // 显示成功提示
+            if (btn) {
+                if (newStatus === 'completed') {
+                    btn.innerHTML = '<span class="emoji-bounce">🎉</span> 太棒了!';
+                    // 庆祝特效 - 撒花纸屑
+                    celebrateSuccess();
+                } else {
+                    btn.innerHTML = '<i class="bi bi-check-circle"></i> 已保存';
+                    btn.classList.remove('btn-success');
+                    btn.classList.add('btn-outline-success');
+                }
+            }
+            // 延迟刷新以显示保存成功
+            setTimeout(() => {
+                location.reload();
+            }, 800);
+        } else {
+            alert('操作失败：' + (data.error || '未知错误'));
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-check-circle"></i> 完成';
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('操作失败，请稍后重试');
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check-circle"></i> 完成';
+        }
+    });
+}
+
+// 庆祝完成特效
+function celebrateSuccess() {
+    // 创建庆祝表情符号
+    const emojis = ['🎉', '🎊', '⭐', '✨', '💪', '👏', '🌟'];
+    const container = document.body;
+
+    for (let i = 0; i < 20; i++) {
+        setTimeout(() => {
+            const emoji = document.createElement('div');
+            emoji.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+            emoji.style.position = 'fixed';
+            emoji.style.left = Math.random() * 100 + 'vw';
+            emoji.style.top = '-50px';
+            emoji.style.fontSize = (Math.random() * 20 + 20) + 'px';
+            emoji.style.zIndex = '9999';
+            emoji.style.pointerEvents = 'none';
+            emoji.style.transition = 'all 2s ease-out';
+
+            container.appendChild(emoji);
+
+            // 触发动画
+            setTimeout(() => {
+                emoji.style.top = '110vh';
+                emoji.style.opacity = '0';
+            }, 50);
+
+            // 清理元素
+            setTimeout(() => {
+                emoji.remove();
+            }, 2000);
+        }, i * 50);
+    }
+}
+</script>
+{% endblock %}

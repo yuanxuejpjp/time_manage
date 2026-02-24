@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}设置 - 时间掌控者{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2 class="mb-4"><i class="bi bi-gear"></i> 设置</h2>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">时间偏好设置</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="daily_start_hour" class="form-label">每日开始时间</label>
+                            <select class="form-select" id="daily_start_hour" name="daily_start_hour">
+                                {% for hour in range(5, 13) %}
+                                    <option value="{{ hour }}" {% if current_user.daily_start_hour == hour %}selected{% endif %}>
+                                        {{ hour }}:00
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="daily_end_hour" class="form-label">每日结束时间</label>
+                            <select class="form-select" id="daily_end_hour" name="daily_end_hour">
+                                {% for hour in range(18, 25) %}
+                                    <option value="{{ hour }}" {% if current_user.daily_end_hour == hour %}selected{% endif %}>
+                                        {{ hour }}:00
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="max_work_hours" class="form-label">每日最大工作时长（小时）</label>
+                            <input type="number" class="form-control" id="max_work_hours" name="max_work_hours"
+                                   value="{{ current_user.max_work_hours }}" min="1" max="16" step="1">
+                        </div>
+                    </div>
+
+                    <p class="text-muted small">
+                        <i class="bi bi-info-circle"></i>
+                        这些设置将用于 AI 生成智能日程时的参考
+                    </p>
+
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save"></i> 保存设置
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">账号信息</h5>
+            </div>
+            <div class="card-body">
+                <table class="table">
+                    <tr>
+                        <th>用户名</th>
+                        <td>{{ current_user.username }}</td>
+                    </tr>
+                    <tr>
+                        <th>邮箱</th>
+                        <td>{{ current_user.email }}</td>
+                    </tr>
+                    <tr>
+                        <th>注册时间</th>
+                        <td>{{ current_user.created_at|datetime_filter }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

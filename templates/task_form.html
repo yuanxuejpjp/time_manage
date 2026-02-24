@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+
+{% block title %}{{ task and '编辑任务' or '新建任务' }} - 时间掌控者{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="bi bi-{% if task %}pencil{% else %}plus-lg{% endif %}"></i>
+                    {{ task and '编辑任务' or '新建任务' }}
+                </h4>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <!-- 基本信息 -->
+                    <div class="row mb-3">
+                        <div class="col-md-8">
+                            <label for="title" class="form-label">任务标题 <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="title" name="title"
+                                   value="{{ task.title if task else '' }}" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="category" class="form-label">分类</label>
+                            <input type="text" class="form-control" id="category" name="category"
+                                   list="category-list" value="{{ task.category if task else '其他' }}" required>
+                            <datalist id="category-list">
+                                <option value="上课">
+                                <option value="科研">
+                                <option value="投资研究">
+                                <option value="运动">
+                                <option value="语言">
+                                <option value="自习">
+                                <option value="生活">
+                                <option value="其他">
+                            </datalist>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">任务描述</label>
+                        <textarea class="form-control" id="description" name="description" rows="3">{{ task.description if task else '' }}</textarea>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="estimated_hours" class="form-label">预计耗时（小时）</label>
+                            <input type="number" class="form-control" id="estimated_hours" name="estimated_hours"
+                                   value="{{ task.estimated_hours if task else '1.0' }}" step="0.5" min="0.5" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="priority" class="form-label">优先级</label>
+                            <select class="form-select" id="priority" name="priority">
+                                <option value="高" {% if task and task.priority == '高' %}selected{% endif %}>高</option>
+                                <option value="中" {% if not task or task.priority == '中' %}selected{% endif %}>中</option>
+                                <option value="低" {% if task and task.priority == '低' %}selected{% endif %}>低</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="deadline" class="form-label">截止日期时间</label>
+                            <input type="datetime-local" class="form-control" id="deadline" name="deadline"
+                                   value="{{ task.deadline|datetime_local_filter if task and task.deadline else '' }}">
+                        </div>
+                    </div>
+
+                    <!-- 会议设置 -->
+                    <div class="card mb-3 border-danger">
+                        <div class="card-body">
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="is_meeting" name="is_meeting"
+                                       {% if task and task.is_meeting %}checked{% endif %}>
+                                <label class="form-check-label" for="is_meeting">
+                                    <strong><i class="bi bi-people-fill text-danger"></i> 标记为会议</strong>
+                                    <span class="text-muted ms-2">（会议将在日程中以醒目样式显示，AI生成日程时优先安排）</span>
+                                </label>
+                            </div>
+
+                            <div id="meeting-options" style="display: {% if task and task.is_meeting %}block{% else %}none{% endif %};">
+                                <div class="mb-3">
+                                    <label for="location" class="form-label">
+                                        <i class="bi bi-geo-alt"></i> 会议地点
+                                    </label>
+                                    <input type="text" class="form-control" id="location" name="location"
+                                           value="{{ task.location if task else '' }}"
+                                           placeholder="如：会议室A、线上会议、咖啡厅等">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 重复设置 -->
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="is_recurring" name="is_recurring"
+                                       {% if task and task.is_recurring %}checked{% endif %}>
+                                <label class="form-check-label" for="is_recurring">
+                                    <strong>重复任务</strong>
+                                </label>
+                            </div>
+
+                            <div id="recurring-options" style="display: {% if task and task.is_recurring %}block{% else %}none{% endif %};">
+                                <div class="mb-3">
+                                    <label class="form-label">重复类型</label>
+                                    <select class="form-select" id="recurring_type" name="recurring_type">
+                                        <option value="daily" {% if task and task.recurring_type == 'daily' %}selected{% endif %}>每天</option>
+                                        <option value="weekly" {% if task and task.recurring_type == 'weekly' %}selected{% endif %}>每周</option>
+                                        <option value="weekly_days" {% if task and task.recurring_type == 'weekly_days' %}selected{% endif %}>每周指定天数</option>
+                                    </select>
+                                </div>
+
+                                <div id="weekly-days-options" style="display: {% if task and task.recurring_type == 'weekly_days' %}block{% else %}none{% endif %};">
+                                    <label class="form-label">选择星期</label>
+                                    <div class="d-flex gap-2 flex-wrap">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="recurring_days" value="0"
+                                                   {% if task and task.recurring_days and '0' in task.recurring_days %}checked{% endif %}>
+                                            <label class="form-check-label">周一</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="recurring_days" value="1"
+                                                   {% if task and task.recurring_days and '1' in task.recurring_days %}checked{% endif %}>
+                                            <label class="form-check-label">周二</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="recurring_days" value="2"
+                                                   {% if task and task.recurring_days and '2' in task.recurring_days %}checked{% endif %}>
+                                            <label class="form-check-label">周三</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="recurring_days" value="3"
+                                                   {% if task and task.recurring_days and '3' in task.recurring_days %}checked{% endif %}>
+                                            <label class="form-check-label">周四</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="recurring_days" value="4"
+                                                   {% if task and task.recurring_days and '4' in task.recurring_days %}checked{% endif %}>
+                                            <label class="form-check-label">周五</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="recurring_days" value="5"
+                                                   {% if task and task.recurring_days and '5' in task.recurring_days %}checked{% endif %}>
+                                            <label class="form-check-label">周六</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="recurring_days" value="6"
+                                                   {% if task and task.recurring_days and '6' in task.recurring_days %}checked{% endif %}>
+                                            <label class="form-check-label">周日</label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mt-3">
+                                    <label for="recurring_end_date" class="form-label">重复结束日期（可选）</label>
+                                    <input type="date" class="form-control" id="recurring_end_date" name="recurring_end_date"
+                                           value="{{ task.recurring_end_date|date_filter if task and task.recurring_end_date else '' }}">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 按钮组 -->
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg"></i> {{ task and '保存' or '创建' }}
+                        </button>
+                        <a href="{{ url_for('tasks.list_tasks') }}" class="btn btn-outline-secondary">取消</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('is_recurring').addEventListener('change', function() {
+    document.getElementById('recurring-options').style.display = this.checked ? 'block' : 'none';
+});
+
+document.getElementById('recurring_type').addEventListener('change', function() {
+    document.getElementById('weekly-days-options').style.display =
+        this.value === 'weekly_days' ? 'block' : 'none';
+});
+
+document.getElementById('is_meeting').addEventListener('change', function() {
+    document.getElementById('meeting-options').style.display = this.checked ? 'block' : 'none';
+});
+</script>
+{% endblock %}

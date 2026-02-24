@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}复盘历史 - 时间掌控者{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="bi bi-clock-history"></i> 复盘历史</h2>
+            <a href="{{ url_for('reflection.daily_reflection') }}" class="btn btn-primary">
+                <i class="bi bi-plus-lg"></i> 今日复盘
+            </a>
+        </div>
+
+        {% if reflections.items %}
+            <div class="row">
+                {% for ref in reflections.items %}
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <strong>{{ ref.reflection_date|date_filter }}</strong>
+                                {% if ref.is_long_term_value %}
+                                    <span class="badge bg-success">长期价值</span>
+                                {% endif %}
+                            </div>
+                            <div class="card-body">
+                                {% if ref.core_progress %}
+                                    <p class="card-text small"><strong>核心推进：</strong>{{ ref.core_progress[:50] }}{{ '...' if ref.core_progress|length > 50 else '' }}</p>
+                                {% endif %}
+                                {% if ref.deep_work_hours %}
+                                    <p class="card-text small"><strong>深度工作：</strong>{{ ref.deep_work_hours }}小时</p>
+                                {% endif %}
+                                {% if ref.tomorrow_mit %}
+                                    <p class="card-text small"><strong>MIT：</strong>{{ ref.tomorrow_mit[:50] }}{{ '...' if ref.tomorrow_mit|length > 50 else '' }}</p>
+                                {% endif %}
+                            </div>
+                            <div class="card-footer">
+                                <a href="{{ url_for('reflection.daily_reflection') }}?date={{ ref.reflection_date }}" class="btn btn-sm btn-outline-primary">查看详情</a>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <!-- 分页 -->
+            {% if reflections.pages > 1 %}
+                <nav>
+                    <ul class="pagination justify-content-center">
+                        {% if reflections.has_prev %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('reflection.reflection_history', page=reflections.prev_num) }}">上一页</a>
+                            </li>
+                        {% endif %}
+                        {% for page_num in reflections.iter_pages() %}
+                            {% if page_num %}
+                                <li class="page-item {{ 'active' if page_num == reflections.page else '' }}">
+                                    <a class="page-link" href="{{ url_for('reflection.reflection_history', page=page_num) }}">{{ page_num }}</a>
+                                </li>
+                            {% else %}
+                                <li class="page-item disabled"><span class="page-link">...</span></li>
+                            {% endif %}
+                        {% endfor %}
+                        {% if reflections.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('reflection.reflection_history', page=reflections.next_num) }}">下一页</a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            {% endif %}
+        {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-journal-x text-muted" style="font-size: 4rem;"></i>
+                <p class="text-muted mt-3">还没有复盘记录</p>
+                <a href="{{ url_for('reflection.daily_reflection') }}" class="btn btn-primary">
+                    <i class="bi bi-plus-lg"></i> 开始第一次复盘
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
