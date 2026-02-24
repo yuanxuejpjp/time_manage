@@ -14,8 +14,12 @@ def call_deepseek_api(prompt, max_tokens=2000):
     api_key = current_app.config.get('DEEPSEEK_API_KEY', '')
     base_url = current_app.config.get('DEEPSEEK_BASE_URL', 'https://api.deepseek.com')
 
+    print(f'[DEBUG] API Key configured: {bool(api_key)}')
+    print(f'[DEBUG] API Key length: {len(api_key) if api_key else 0}')
+    print(f'[DEBUG] Base URL: {base_url}')
+
     if not api_key:
-        print('DeepSeek API key not configured')
+        print('[ERROR] DeepSeek API key not configured')
         return None
 
     try:
@@ -23,6 +27,7 @@ def call_deepseek_api(prompt, max_tokens=2000):
         session = requests.Session()
         session.trust_env = False  # 忽略系统代理设置
 
+        print(f'[DEBUG] Sending request to DeepSeek API...')
         response = session.post(
             f'{base_url}/v1/chat/completions',
             headers={
@@ -38,31 +43,35 @@ def call_deepseek_api(prompt, max_tokens=2000):
                 'max_tokens': max_tokens,
                 'temperature': 0.7
             },
-            timeout=60,
+            timeout=90,  # 增加超时时间到90秒
             verify=True
         )
 
+        print(f'[DEBUG] Response status: {response.status_code}')
+
         if response.status_code == 200:
             result = response.json()
-            return result['choices'][0]['message']['content']
+            content = result['choices'][0]['message']['content']
+            print(f'[DEBUG] API response received, length: {len(content)}')
+            return content
         else:
-            print(f'DeepSeek API error: {response.status_code} - {response.text}')
+            print(f'[ERROR] DeepSeek API error: {response.status_code} - {response.text}')
             return None
 
     except requests.exceptions.ProxyError as e:
-        print(f'DeepSeek API proxy error: {str(e)}')
+        print(f'[ERROR] DeepSeek API proxy error: {str(e)}')
         print('提示：请检查系统代理设置或尝试关闭代理')
         return None
     except requests.exceptions.SSLError as e:
-        print(f'DeepSeek API SSL error: {str(e)}')
+        print(f'[ERROR] DeepSeek API SSL error: {str(e)}')
         print('提示：SSL连接失败，可能需要配置VPN或检查网络')
         return None
     except requests.exceptions.Timeout as e:
-        print(f'DeepSeek API timeout: {str(e)}')
+        print(f'[ERROR] DeepSeek API timeout: {str(e)}')
         print('提示：连接超时，请检查网络或稍后重试')
         return None
     except Exception as e:
-        print(f'DeepSeek API exception: {type(e).__name__}: {str(e)}')
+        print(f'[ERROR] DeepSeek API exception: {type(e).__name__}: {str(e)}')
         return None
 
 
@@ -284,9 +293,11 @@ def generate_summary():
 
 请用中文输出，条理清晰，语气友好而专业。"""
 
+    print(f"[DEBUG] 开始调用DeepSeek API生成{title}...")
     ai_response = call_deepseek_api(prompt, max_tokens=2000)
 
     if ai_response:
+        print(f"[DEBUG] API调用成功，响应长度: {len(ai_response)}")
         # 尝试分离总结和建议
         if '建议' in ai_response or '改进' in ai_response:
             parts = ai_response.split('建议', 1) if '建议' in ai_response else ai_response.split('改进', 1)
@@ -296,15 +307,20 @@ def generate_summary():
             summary.ai_summary = ai_response
             summary.ai_suggestions = ''
     else:
-        summary.ai_summary = 'AI生成失败，请检查API配置'
+        print(f"[DEBUG] API调用失败或返回空")
+        summary.ai_summary = 'AI生成失败，请检查API配置或稍后重试'
         summary.ai_suggestions = ''
 
     try:
         db.session.commit()
-        flash(f'{title}生成成功', 'success')
+        if ai_response:
+            flash(f'{title}生成成功', 'success')
+        else:
+            flash(f'{title}已保存，但AI分析失败', 'warning')
     except Exception as e:
+        print(f"[DEBUG] 数据库提交失败: {str(e)}")
         db.session.rollback()
-        flash(f'生成失败：{str(e)}', 'danger')
+        flash(f'保存失败：{str(e)}', 'danger')
 
     return redirect(url_for('summary.view_summary', summary_id=summary.id))
 
