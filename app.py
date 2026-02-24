@@ -208,9 +208,27 @@ def inject_now():
         'motivational_quote': motivational_quote
     }
 
-# 创建数据库表
+# 创建数据库表并执行迁移
 with app.app_context():
     db.create_all()
+
+    # 自动迁移：添加 total_hours 字段到 category_progress 表
+    try:
+        from sqlalchemy import inspect, text
+        inspector = inspect(db.engine)
+        columns = [col['name'] for col in inspector.get_columns('category_progress')]
+
+        if 'total_hours' not in columns:
+            print("检测到 category_progress 表缺少 total_hours 字段，正在添加...")
+            if 'postgresql' in str(db.engine.url):
+                db.session.execute(text("ALTER TABLE category_progress ADD COLUMN total_hours FLOAT DEFAULT 0.0"))
+            else:  # SQLite
+                db.session.execute(text("ALTER TABLE category_progress ADD COLUMN total_hours FLOAT DEFAULT 0.0"))
+            db.session.commit()
+            print("✓ total_hours 字段添加成功！")
+    except Exception as e:
+        print(f"迁移检查: {e}")
+        db.session.rollback()
 
 if __name__ == '__main__':
     # 生产环境不使用debug模式
