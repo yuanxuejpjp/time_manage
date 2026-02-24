@@ -11,7 +11,15 @@ load_dotenv()
 # 创建Flask应用
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', 'dev-secret-key-change-in-production')
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///timemaster.db'
+
+# 数据库配置：Render使用PostgreSQL，本地开发使用SQLite
+if os.getenv('DATABASE_URL'):
+    # Render提供的PostgreSQL数据库
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL').replace('postgres://', 'postgresql://')
+else:
+    # 本地开发使用SQLite
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///timemaster.db'
+
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # DeepSeek API配置
