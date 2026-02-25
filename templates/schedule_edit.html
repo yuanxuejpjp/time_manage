@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}编辑日程 - 时间掌控者{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="bi bi-pencil-square"></i> 编辑日程</h2>
+            <a href="{{ url_for('schedule.view_schedule', date=schedule.date.strftime('%Y-%m-%d')) }}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> 返回
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="title" class="form-label">任务标题 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="title" name="title"
+                               value="{{ schedule.task_title }}" required>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="date" class="form-label">日期 <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" id="date" name="date"
+                                   value="{{ schedule.date.strftime('%Y-%m-%d') }}" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="start_time" class="form-label">开始时间 <span class="text-danger">*</span></label>
+                            <input type="time" class="form-control" id="start_time" name="start_time"
+                                   value="{{ schedule.start_time.strftime('%H:%M') }}" required>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="end_time" class="form-label">结束时间 <span class="text-danger">*</span></label>
+                            <input type="time" class="form-control" id="end_time" name="end_time"
+                                   value="{{ schedule.end_time.strftime('%H:%M') }}" required>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="category" class="form-label">分类</label>
+                            <select class="form-select" id="category" name="category">
+                                <option value="工作" {% if schedule.category == '工作' %}selected{% endif %}>工作</option>
+                                <option value="学习" {% if schedule.category == '学习' %}selected{% endif %}>学习</option>
+                                <option value="运动" {% if schedule.category == '运动' %}selected{% endif %}>运动</option>
+                                <option value="娱乐" {% if schedule.category == '娱乐' %}selected{% endif %}>娱乐</option>
+                                <option value="休息" {% if schedule.category == '休息' %}selected{% endif %}>休息</option>
+                                <option value="其他" {% if schedule.category == '其他' or not schedule.category %}selected{% endif %}>其他</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="location" class="form-label">地点</label>
+                            <input type="text" class="form-control" id="location" name="location"
+                                   value="{{ schedule.location or '' }}" placeholder="可选">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="status" class="form-label">状态</label>
+                        <select class="form-select" id="status" name="status">
+                            <option value="scheduled" {% if schedule.status == 'scheduled' %}selected{% endif %}>已安排</option>
+                            <option value="completed" {% if schedule.status == 'completed' %}selected{% endif %}>已完成</option>
+                            <option value="partial" {% if schedule.status == 'partial' %}selected{% endif %}>部分完成</option>
+                            <option value="cancelled" {% if schedule.status == 'cancelled' %}selected{% endif %}>已取消</option>
+                        </select>
+                    </div>
+
+                    {% if schedule.ai_reasoning %}
+                    <div class="mb-3">
+                        <label class="form-label">AI推荐理由</label>
+                        <div class="alert alert-info">
+                            <i class="bi bi-lightbulb"></i> {{ schedule.ai_reasoning }}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> 保存修改
+                        </button>
+                        <a href="{{ url_for('schedule.view_schedule', date=schedule.date.strftime('%Y-%m-%d')) }}" class="btn btn-outline-secondary">
+                            取消
+                        </a>
+                        <button type="submit" formaction="{{ url_for('schedule.delete_schedule', schedule_id=schedule.id) }}"
+                                class="btn btn-outline-danger ms-auto"
+                                onclick="return confirm('确定要删除这个日程吗？')">
+                            <i class="bi bi-trash"></i> 删除
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
