@@ -20,6 +20,28 @@
             <div class="card-body">
                 <form method="POST">
                     <div class="mb-3">
+                        <label for="task_id" class="form-label">选择任务</label>
+                        <select class="form-select" id="task_id" name="task_id" onchange="handleTaskSelection()">
+                            <option value="custom" {% if not schedule.task_id %}selected{% endif %}>手动输入</option>
+                            {% if schedule.task_id %}
+                                <option value="{{ schedule.task_id }}" selected>
+                                    {{ schedule.task_title }} (当前关联)
+                                </option>
+                            {% endif %}
+                            {% for task in pending_tasks %}
+                                {% if task.id != schedule.task_id %}
+                                <option value="{{ task.id }}">
+                                    {{ task.title }}
+                                    {% if task.priority %}[{{ task.priority }}优先]{% endif %}
+                                    {% if task.deadline %}@{{ task.deadline.strftime('%m-%d') }}{% endif %}
+                                </option>
+                                {% endif %}
+                            {% endfor %}
+                        </select>
+                        <small class="text-muted">从待办任务中选择，或选择"手动输入"自定义</small>
+                    </div>
+
+                    <div class="mb-3" id="custom-title-group">
                         <label for="title" class="form-label">任务标题 <span class="text-danger">*</span></label>
                         <input type="text" class="form-control" id="title" name="title"
                                value="{{ schedule.task_title }}" required>
@@ -99,4 +121,29 @@
         </div>
     </div>
 </div>
+
+<script>
+function handleTaskSelection() {
+    const taskSelect = document.getElementById('task_id');
+    const titleGroup = document.getElementById('custom-title-group');
+    const titleInput = document.getElementById('title');
+
+    if (taskSelect.value === 'custom') {
+        // 手动输入模式
+        titleGroup.style.display = 'block';
+        titleInput.required = true;
+    } else {
+        // 任务选择模式
+        const selectedOption = taskSelect.options[taskSelect.selectedIndex];
+        titleInput.value = selectedOption.text.split('[')[0].split('@')[0].trim();
+        titleGroup.style.display = 'none';
+        titleInput.required = false;
+    }
+}
+
+// 初始化时处理当前状态
+document.addEventListener('DOMContentLoaded', function() {
+    handleTaskSelection();
+});
+</script>
 {% endblock %}
