@@ -780,12 +780,37 @@ def toggle_status(schedule_id):
 @login_required
 def manual_add():
     """手动添加日程"""
+    # 获取待办任务列表
+    pending_tasks = Task.query.filter_by(
+        user_id=current_user.id,
+        status='pending'
+    ).order_by(Task.priority.desc(), Task.deadline.asc()).all() or []
+    # Debug: 打印查询结果
+    print(f'[DEBUG MANUAL_ADD] Pending tasks count: {len(pending_tasks)}')
+    for task in pending_tasks:
+        print(f'[DEBUG MANUAL_ADD] Task: id={task.id}, title={task.title}, status={task.status}, priority={task.priority}')
+
     if request.method == 'POST':
         date_str = request.form.get('date', '')
         start_time_str = request.form.get('start_time', '')
         end_time_str = request.form.get('end_time', '')
-        title = request.form.get('title', '').strip()
         category = request.form.get('category', '其他').strip() or '其他'
+
+        # 支持选择任务或手动输入
+        task_id = request.form.get('task_id', '')
+        title_input = request.form.get('title', '').strip()
+
+        title = title_input
+        task_id_value = None
+
+        if task_id and task_id != 'custom':
+            task = Task.query.filter_by(id=int(task_id), user_id=current_user.id).first()
+            if task:
+                title = task.title
+                task_id_value = task.id
+                # 如果任务有分类，使用任务的分类
+                if not category or category == '其他':
+                    category = task.category or '其他'
 
         try:
             schedule_date = datetime.strptime(date_str, '%Y-%m-%d').date()
@@ -799,6 +824,7 @@ def manual_add():
                 end_time=end_time,
                 task_title=title,
                 category=category,
+                task_id=task_id_value,
                 generated_by_ai=False
             )
 
@@ -811,7 +837,7 @@ def manual_add():
             db.session.rollback()
             flash(f'添加失败：{str(e)}', 'danger')
 
-    return render_template('schedule_manual.html')
+    return render_template('schedule_manual.html', pending_tasks=pending_tasks)
 
 
 @schedule_bp.route('/<int:schedule_id>/edit', methods=['GET', 'POST'])
@@ -819,6 +845,16 @@ def manual_add():
 def edit_schedule(schedule_id):
     """编辑日程"""
     schedule = Schedule.query.filter_by(id=schedule_id, user_id=current_user.id).first_or_404()
+
+    # 获取待办任务列表，用于下拉选择
+    pending_tasks = Task.query.filter_by(
+        user_id=current_user.id,
+        status='pending'
+    ).order_by(Task.priority.desc(), Task.deadline.asc()).all() or []
+    # Debug: 打印查询结果
+    print(f'[DEBUG EDIT_SCHEDULE] Pending tasks count: {len(pending_tasks)}')
+    for task in pending_tasks:
+        print(f'[DEBUG EDIT_SCHEDULE] Task: id={task.id}, title={task.title}, status={task.status}, priority={task.priority}')
 
     if request.method == 'POST':
         # 保存原始值用于比较
@@ -832,8 +868,26 @@ def edit_schedule(schedule_id):
         old_duration = (datetime.combine(old_date, old_end) -
                        datetime.combine(old_date, old_start)).total_seconds() / 3600
 
-        # 获取表单数据
-        schedule.task_title = request.form.get('title', '').strip()
+        # 获取表单数据 - 支持选择任务或手动输入
+        task_id = request.form.get('task_id', '')
+        title_input = request.form.get('title', '').strip()
+
+        if task_id and task_id != 'custom':
+            # 从任务列表选择
+            task = Task.query.filter_by(id=int(task_id), user_id=current_user.id).first()
+            if task:
+                schedule.task_id = task.id
+                schedule.task_title = task.title
+                # 如果任务有分类，使用任务的分类
+                if not schedule.category or schedule.category == '其他':
+                    schedule.category = task.category or '其他'
+            else:
+                schedule.task_title = title_input or schedule.task_title
+        else:
+            # 手动输入
+            schedule.task_id = None
+            schedule.task_title = title_input
+
         schedule.category = request.form.get('category', '其他').strip() or '其他'
         schedule.location = request.form.get('location', '').strip()
 
@@ -897,7 +951,7 @@ def edit_schedule(schedule_id):
             db.session.rollback()
             flash(f'更新失败：{str(e)}', 'danger')
 
-    return render_template('schedule_edit.html', schedule=schedule)
+    return render_template('schedule_edit.html', schedule=schedule, pending_tasks=pending_tasks)
 
 
 @schedule_bp.route('/<int:schedule_id>/delete', methods=['POST'])
