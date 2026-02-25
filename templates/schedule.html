@@ -33,10 +33,13 @@
         </form>
         <form method="POST" action="{{ url_for('schedule.generate_schedule') }}" class="d-inline" onsubmit="return disableGenerateButton(this, 'week')">
             <input type="hidden" name="type" value="week">
-            <button type="submit" class="btn btn-outline-primary" name="generate_week">
+            <button type="submit" class="btn btn-outline-primary me-2" name="generate_week">
                 <i class="bi bi-calendar-week"></i> 生成本周计划
             </button>
         </form>
+        <a href="{{ url_for('schedule.manual_add') }}" class="btn btn-outline-secondary me-2">
+            <i class="bi bi-plus-circle"></i> 手动添加
+        </a>
         <span id="loading-msg" class="text-info ms-3" style="display:none;">
             <i class="bi bi-hourglass-split"></i> 正在生成中，请稍候...
         </span>
