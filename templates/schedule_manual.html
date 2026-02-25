@@ -18,6 +18,11 @@
     <div class="col-md-8">
         <div class="card">
             <div class="card-body">
+                <!-- Debug info -->
+                <div class="alert alert-info py-2 small">
+                    <small>🐛 调试信息: 共 {{ pending_tasks|length }} 个待办任务可选</small>
+                </div>
+
                 <form method="POST">
                     <div class="mb-3">
                         <label for="task_id" class="form-label">选择任务</label>
