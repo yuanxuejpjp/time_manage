@@ -690,6 +690,21 @@ def update_reward_progress(category, hours):
     db.session.commit()  # 添加提交
 
 
+def decrease_reward_progress(category, hours):
+    """减少奖励进度 - 取消完成时减少打卡次数和时长"""
+    progress = RewardProgress.query.filter_by(
+        user_id=current_user.id,
+        category=category
+    ).first()
+
+    if progress:
+        # 减少打卡次数和时长，确保不为负数
+        progress.checkin_count = max(0, progress.checkin_count - 1)
+        progress.total_hours = max(0, (progress.total_hours or 0) - hours)
+        progress.last_updated = datetime.now()
+        db.session.commit()
+
+
 @schedule_bp.route('/<int:schedule_id>/toggle_status', methods=['POST'])
 @login_required
 def toggle_status(schedule_id):
@@ -706,31 +721,41 @@ def toggle_status(schedule_id):
         if new_status not in ['scheduled', 'completed', 'partial', 'cancelled']:
             return jsonify({'success': False, 'error': f'无效的状态: {new_status}'}), 400
 
+        # 保存旧状态，用于判断是否需要更新进度
+        old_status = schedule.status
+
         # 更新状态
         schedule.status = new_status
 
-        # 如果标记为完成，更新奖励进度
-        if new_status == 'completed':
-            duration = (datetime.combine(schedule.date, schedule.end_time) -
-                       datetime.combine(schedule.date, schedule.start_time)).total_seconds() / 3600
+        # 计算时长
+        duration = (datetime.combine(schedule.date, schedule.end_time) -
+                   datetime.combine(schedule.date, schedule.start_time)).total_seconds() / 3600
+
+        # 如果从非完成状态改为完成状态，增加进度
+        if new_status == 'completed' and old_status != 'completed':
             if schedule.category:
                 update_reward_progress(schedule.category, duration)
-            # 无论是否有分类，都需要提交状态更新
-            db.session.commit()
 
-        # 如果有关联任务且完成，更新任务状态
-        if schedule.task_id and new_status == 'completed':
+        # 如果从完成状态改为非完成状态，减少进度
+        elif old_status == 'completed' and new_status != 'completed':
+            if schedule.category:
+                decrease_reward_progress(schedule.category, duration)
+
+        # 提交状态更新
+        db.session.commit()
+
+        # 如果有关联任务，更新任务状态
+        if schedule.task_id:
             task = Task.query.get(schedule.task_id)
-            if task and task.status == 'pending':
+            if task:
                 all_schedules = Schedule.query.filter_by(task_id=task.id).all()
                 if all(s.status == 'completed' for s in all_schedules):
                     task.status = 'completed'
                     task.completed_at = datetime.now()
-                    db.session.commit()
-
-        # 对于非完成状态，也需要提交
-        if new_status != 'completed':
-            db.session.commit()
+                elif task.status == 'completed' and new_status != 'completed':
+                    task.status = 'pending'
+                    task.completed_at = None
+                db.session.commit()
 
         status_map = {
             'scheduled': '已安排',
@@ -787,3 +812,114 @@ def manual_add():
             flash(f'添加失败：{str(e)}', 'danger')
 
     return render_template('schedule_manual.html')
+
+
+@schedule_bp.route('/<int:schedule_id>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_schedule(schedule_id):
+    """编辑日程"""
+    schedule = Schedule.query.filter_by(id=schedule_id, user_id=current_user.id).first_or_404()
+
+    if request.method == 'POST':
+        # 保存原始值用于比较
+        old_status = schedule.status
+        old_category = schedule.category
+        old_start = schedule.start_time
+        old_end = schedule.end_time
+        old_date = schedule.date
+
+        # 计算原始时长
+        old_duration = (datetime.combine(old_date, old_end) -
+                       datetime.combine(old_date, old_start)).total_seconds() / 3600
+
+        # 获取表单数据
+        schedule.task_title = request.form.get('title', '').strip()
+        schedule.category = request.form.get('category', '其他').strip() or '其他'
+        schedule.location = request.form.get('location', '').strip()
+
+        # 时间设置
+        date_str = request.form.get('date', '')
+        start_time_str = request.form.get('start_time', '')
+        end_time_str = request.form.get('end_time', '')
+
+        try:
+            schedule.date = datetime.strptime(date_str, '%Y-%m-%d').date()
+            schedule.start_time = datetime.strptime(start_time_str, '%H:%M').time()
+            schedule.end_time = datetime.strptime(end_time_str, '%H:%M').time()
+        except Exception as e:
+            flash('请输入正确的日期和时间格式', 'danger')
+            return redirect(url_for('schedule.edit_schedule', schedule_id=schedule_id))
+
+        # 计算新时长
+        new_duration = (datetime.combine(schedule.date, schedule.end_time) -
+                       datetime.combine(schedule.date, schedule.start_time)).total_seconds() / 3600
+
+        # 状态设置
+        schedule.status = request.form.get('status', 'scheduled')
+        new_status = schedule.status
+
+        try:
+            # 处理进度变化
+            # 1. 如果状态从完成改为非完成，减少进度
+            if old_status == 'completed' and new_status != 'completed':
+                if old_category:
+                    decrease_reward_progress(old_category, old_duration)
+
+            # 2. 如果状态从非完成改为完成，增加进度
+            elif new_status == 'completed' and old_status != 'completed':
+                if schedule.category:
+                    update_reward_progress(schedule.category, new_duration)
+
+            # 3. 如果保持完成状态但时长或分类改变了
+            elif old_status == 'completed' and new_status == 'completed':
+                # 如果分类改变了
+                if old_category != schedule.category:
+                    # 减少旧分类的进度
+                    if old_category:
+                        decrease_reward_progress(old_category, old_duration)
+                    # 增加新分类的进度
+                    if schedule.category:
+                        update_reward_progress(schedule.category, new_duration)
+                # 如果分类没变但时长改变了
+                elif old_category == schedule.category and schedule.category:
+                    # 调整时长差异
+                    duration_diff = new_duration - old_duration
+                    if duration_diff != 0:
+                        if duration_diff > 0:
+                            update_reward_progress(schedule.category, duration_diff)
+                        else:
+                            decrease_reward_progress(schedule.category, -duration_diff)
+
+            db.session.commit()
+            flash('日程更新成功', 'success')
+            return redirect(url_for('schedule.view_schedule', date=schedule.date.strftime('%Y-%m-%d')))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'更新失败：{str(e)}', 'danger')
+
+    return render_template('schedule_edit.html', schedule=schedule)
+
+
+@schedule_bp.route('/<int:schedule_id>/delete', methods=['POST'])
+@login_required
+def delete_schedule(schedule_id):
+    """删除日程"""
+    schedule = Schedule.query.filter_by(id=schedule_id, user_id=current_user.id).first_or_404()
+    schedule_date = schedule.date
+
+    # 如果是已完成的日程，需要减少进度
+    if schedule.status == 'completed':
+        duration = (datetime.combine(schedule.date, schedule.end_time) -
+                   datetime.combine(schedule.date, schedule.start_time)).total_seconds() / 3600
+        if schedule.category:
+            decrease_reward_progress(schedule.category, duration)
+
+    try:
+        db.session.delete(schedule)
+        db.session.commit()
+        flash('日程已删除', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'删除失败：{str(e)}', 'danger')
+
+    return redirect(url_for('schedule.view_schedule', date=schedule_date.strftime('%Y-%m-%d')))
