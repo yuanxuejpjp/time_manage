@@ -10,7 +10,8 @@
             <span class="visually-hidden">加载中...</span>
         </div>
         <p class="mt-3" style="font-size: 1.2rem;">🤖 正在生成AI分析，请稍候...</p>
-        <p class="text-muted small">这可能需要30-90秒</p>
+        <p class="text-muted small">预计需要20-60秒，最多2分钟</p>
+        <p class="text-muted small" style="font-size: 0.8rem;">如果超时，系统会自动生成基础统计报告</p>
     </div>
 </div>
 
@@ -154,12 +155,22 @@ function showGenerating(event, reportType) {
     const form = event.target.form;
     const formData = new FormData(form);
 
+    // 创建超时控制器 - 120秒超时
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+        controller.abort();
+        overlay.style.display = 'none';
+        alert('生成超时（超过2分钟），可能原因：\n1. API服务器响应慢\n2. 复盘数据太多\n3. 网络连接问题\n\n请稍后重试，或联系管理员检查API配置');
+    }, 120000); // 120秒超时
+
     // 使用fetch提交，以便在完成后跳转
     fetch(form.action, {
         method: 'POST',
-        body: formData
+        body: formData,
+        signal: controller.signal
     })
     .then(response => {
+        clearTimeout(timeoutId);
         // 服务器会重定向到总结详情页
         if (response.redirected) {
             window.location.href = response.url;
@@ -179,9 +190,14 @@ function showGenerating(event, reportType) {
         }
     })
     .catch(error => {
+        clearTimeout(timeoutId);
         console.error('Error:', error);
         overlay.style.display = 'none';
-        alert('生成失败，请稍后重试');
+        if (error.name === 'AbortError') {
+            // 超时错误已在上面处理
+        } else {
+            alert('生成失败：' + error.message + '\n请检查网络连接或稍后重试');
+        }
     });
 }
 
