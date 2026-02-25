@@ -310,82 +310,132 @@ def generate_summary():
         flash(f'{title}生成失败：暂无复盘数据', 'warning')
         return redirect(url_for('summary.view_summary', summary_id=summary.id))
 
-    # AI生成总结和建议 - 简化版prompt以提高响应速度
-    prompt = f"""你是专业的时间管理分析师。请根据以下复盘统计数据，生成{title}：
+    # 直接生成总结和建议 - 不调用AI，直接拼接复盘数据
+    print(f"[DEBUG] 开始生成{title}（直接拼接复盘数据）...")
 
-【时间范围】{analysis_data['period']}
+    # 构建总结内容
+    summary_parts = []
 
-【复盘统计】
-- 复盘天数：{reflection_stats['total_days']}天
-- 深度工作总时长：{reflection_stats['total_deep_work_hours']}小时
-- 平均每日深度工作：{reflection_stats['avg_deep_work_hours']}小时
-- 产生长期价值天数：{long_term_value_count}天（占比{reflection_stats['long_term_value_ratio']}%）
-- 改变原有判断次数：{changed_judgment_count}次
+    # 总体评价
+    summary_parts.append(f"""## 📊 总体评价
 
-【核心推进摘要】
-{'; '.join([f"{r['date']}: {r['core_progress'][:50]}..." if r.get('core_progress') and len(r['core_progress']) > 50 else f"{r['date']}: {r.get('core_progress', '无')}" for r in reflection_data[:10]])}
+**时间范围**：{analysis_data['period']}
+**复盘天数**：{reflection_stats['total_days']}天
+**深度工作**：总时长{reflection_stats['total_deep_work_hours']}小时，平均每日{reflection_stats['avg_deep_work_hours']}小时
+**长期价值**：{long_term_value_count}天产生长期价值，占比{reflection_stats['long_term_value_ratio']}%
+**认知更新**：改变判断{changed_judgment_count}次""")
 
-【关键领悟】{len(key_insights)}条
-【时间浪费】{len(time_waste_list)}次
-【MIT设定】{len(mit_list)}个
+    # 核心推进
+    core_progress_list = []
+    for r in reflection_data:
+        if r.get('core_progress'):
+            value_tag = ' 🌟' if r.get('is_long_term_value') else ''
+            core_progress_list.append(f"- **{r['date']}**{value_tag}：{r['core_progress']}")
 
-请生成包含以下内容的{title}（控制在500字以内）：
-
-## 📊 总体评价
-（深度工作投入、长期价值创造、认知更新情况的简要评价）
+    if core_progress_list:
+        summary_parts.append(f"""
 
 ## 🎯 核心推进
-（主要成果总结，重点分析产生长期价值的推进）
 
-## 💡 关键领悟
-（总结最有价值的认知更新）
-
-## ⚠️ 时间浪费
-（识别主要浪费类型和改进建议）
-
-## 🚀 改进建议
-（3-5条具体可行的建议）
-
-要求：条理清晰，语气友好专业，每部分简洁精炼。"""
-
-    print(f"[DEBUG] 开始调用DeepSeek API生成{title}...")
-    ai_response = call_deepseek_api(prompt, max_tokens=1000)  # 减少max_tokens以提高速度
-
-    if ai_response:
-        print(f"[DEBUG] API调用成功，响应长度: {len(ai_response)}")
-        # 尝试分离总结和建议
-        if '建议' in ai_response or '改进' in ai_response:
-            parts = ai_response.split('建议', 1) if '建议' in ai_response else ai_response.split('改进', 1)
-            summary.ai_summary = parts[0]
-            summary.ai_suggestions = ('建议' if '建议' in ai_response else '改进') + parts[1] if len(parts) > 1 else ai_response
-        else:
-            summary.ai_summary = ai_response
-            summary.ai_suggestions = ''
+{chr(10).join(core_progress_list)}""")
     else:
-        print(f"[DEBUG] API调用失败或返回空，生成基础总结")
-        # 生成基础统计总结作为备选方案
-        summary.ai_summary = f"""## 📊 总体评价
-本期复盘共{reflection_stats['total_days']}天，深度工作总时长{reflection_stats['total_deep_work_hours']}小时，平均每日{reflection_stats['avg_deep_work_hours']}小时。
+        summary_parts.append(f"""
 
 ## 🎯 核心推进
-产生长期价值{long_term_value_count}天，占比{reflection_stats['long_term_value_ratio']}%。
+
+暂无核心推进记录""")
+
+    # 深度工作分析
+    summary_parts.append(f"""
+
+## ⏰ 深度工作分析
+
+- **总时长**：{reflection_stats['total_deep_work_hours']}小时
+- **平均每日**：{reflection_stats['avg_deep_work_hours']}小时""")
+
+    # 关键领悟
+    if key_insights:
+        insight_list = [f"- **{i['date']}**：{i['insight']}" for i in key_insights]
+        summary_parts.append(f"""
 
 ## 💡 关键领悟
-共记录{len(key_insights)}条关键领悟，改变判断{changed_judgment_count}次。
 
-## ⚠️ 时间浪费
-共发现{len(time_waste_list)}次时间浪费。
+{chr(10).join(insight_list)}""")
+    else:
+        summary_parts.append(f"""
 
-## 🚀 说明
-AI分析生成失败，以上为基础统计数据。请检查网络连接或API配置后重试获取详细分析。"""
-        summary.ai_suggestions = '💡 建议：请检查DeepSeek API配置或稍后重试以获取完整的AI分析报告。\n\n如需持续使用，请联系管理员确保API服务正常。'
+## 💡 关键领悟
+
+暂无关键领悟记录""")
+
+    # 时间浪费
+    if time_waste_list:
+        waste_list = [f"- **{w['date']}**：{w['waste']}" + (f"（原因：{w['reason']}）" if w.get('reason') else '') for w in time_waste_list]
+        summary_parts.append(f"""
+
+## ⚠️ 时间浪费分析
+
+{chr(10).join(waste_list)}""")
+    else:
+        summary_parts.append(f"""
+
+## ⚠️ 时间浪费分析
+
+🎉 很棒！这段时间没有记录时间浪费""")
+
+    # MIT执行回顾
+    if mit_list:
+        mit_summary = [f"- **{m['date']}**：{m['mit']}" for m in mit_list]
+        summary_parts.append(f"""
+
+## 📋 明日关键任务(MIT)回顾
+
+{chr(10).join(mit_summary)}""")
+    else:
+        summary_parts.append(f"""
+
+## 📋 明日关键任务(MIT)回顾
+
+暂无MIT记录""")
+
+    # 组合总结
+    summary.ai_summary = ''.join(summary_parts)
+
+    # 生成改进建议
+    suggestions = []
+
+    # 深度工作建议
+    if reflection_stats['avg_deep_work_hours'] < 2:
+        suggestions.append("💡 **提升深度工作**：当前平均每日深度工作不足2小时，建议逐步增加深度工作时间，关闭手机通知，专注重要任务。")
+    elif reflection_stats['avg_deep_work_hours'] >= 4:
+        suggestions.append("👍 **保持深度工作**：深度工作时长很不错，继续保持专注状态！")
+
+    # 长期价值建议
+    if reflection_stats['long_term_value_ratio'] < 50:
+        suggestions.append("🎯 **聚焦长期价值**：建议在做任务时多思考：这件事一年后还有价值吗？优先做重要不紧急的事。")
+    else:
+        suggestions.append("🌟 **长期价值导向**：很好！大部分时间都在创造长期价值，继续保持。")
+
+    # 时间浪费建议
+    if time_waste_list:
+        waste_types = [w['waste'] for w in time_waste_list]
+        if '刷手机' in str(waste_types) or '抖音' in str(waste_types) or '游戏' in str(waste_types):
+            suggestions.append("📱 **减少数字沉迷**：建议设置使用时间限制，用番茄工作法保持专注。")
+
+    # 认知更新建议
+    if changed_judgment_count == 0:
+        suggestions.append("🧠 **保持开放思维**：尝试接触新观点，勇于挑战和更新自己的判断。")
+
+    if not suggestions:
+        suggestions = ["🎉 继续保持良好的时间管理习惯，每天进步一点点！"]
+
+    summary.ai_suggestions = '\n\n'.join(suggestions)
+
+    print(f"[DEBUG] {title}生成完成")
 
     try:
         db.session.commit()
-        if ai_response:
-            flash(f'{title}生成成功', 'success')
-        else:
-            flash(f'{title}已保存，但AI分析失败', 'warning')
+        flash(f'{title}生成成功', 'success')
     except Exception as e:
         print(f"[DEBUG] 数据库提交失败: {str(e)}")
         db.session.rollback()
