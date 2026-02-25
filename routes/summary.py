@@ -90,10 +90,16 @@ def list_summaries():
 @login_required
 def generate_summary():
     """生成总结"""
+    import time
+    start_time = time.time()
+    print(f'[DEBUG] ========== 开始生成总结 ==========')
+
     summary_type = request.form.get('type', 'daily')  # daily, weekly, monthly
+    print(f'[DEBUG] 总结类型: {summary_type}')
 
     # 确定日期范围
     today = datetime.now().date()
+    print(f'[DEBUG] 今天: {today}')
 
     if summary_type == 'daily':
         start_date = today
@@ -111,12 +117,14 @@ def generate_summary():
         title = f"月报 - {today.strftime('%Y年%m月')}"
 
     # 检查是否已存在
+    print(f'[DEBUG] 查询现有总结...')
     existing = Summary.query.filter_by(
         user_id=current_user.id,
         summary_type=summary_type,
         start_date=start_date,
         end_date=end_date
     ).first()
+    print(f'[DEBUG] 查询完成，耗时: {time.time() - start_time:.2f}秒')
 
     if existing:
         flash(f'{title}已存在，正在更新...', 'info')
@@ -131,19 +139,19 @@ def generate_summary():
         db.session.add(summary)
 
     # 获取日程数据
-    start_datetime = datetime.combine(start_date, datetime.min.time())
-    end_datetime = datetime.combine(end_date, datetime.max.time())
-
+    print(f'[DEBUG] 查询日程数据...')
     schedules = Schedule.query.filter(
         Schedule.user_id == current_user.id,
         Schedule.date.between(start_date, end_date)
     ).all()
+    print(f'[DEBUG] 日程查询完成，数量: {len(schedules)}，耗时: {time.time() - start_time:.2f}秒')
 
     # 获取反馈数据
     schedule_ids = [s.id for s in schedules]
     feedbacks = Feedback.query.filter(
         Feedback.schedule_id.in_(schedule_ids)
     ).all() if schedule_ids else []
+    print(f'[DEBUG] 反馈查询完成，数量: {len(feedbacks)}，耗时: {time.time() - start_time:.2f}秒')
 
     # 构建反馈字典，方便快速查找
     feedback_dict = {fb.schedule_id: fb for fb in feedbacks}
@@ -186,62 +194,15 @@ def generate_summary():
 
     summary.total_hours = round(total_hours, 1)
     summary.set_category_stats(category_hours)
-
-    # 构建AI分析数据
-    analysis_data = {
-        'type': summary_type,
-        'period': f"{start_date.strftime('%Y-%m-%d')} 至 {end_date.strftime('%Y-%m-%d')}",
-        'total_tasks': total_tasks,
-        'completed_tasks': completed_tasks,
-        'completion_rate': f"{summary.completion_rate}%",
-        'total_hours': f"{total_hours:.1f}",
-        'category_breakdown': category_hours,
-        'task_details': []
-    }
-
-    # 添加任务详情 - 包含有反馈的日程和已完成的日程
-    # 使用 no_autoflush 避免懒加载时触发数据库锁定
-    with db.session.no_autoflush:
-        for sched in schedules:
-            # 获取计划时长（直接使用 task_id，避免懒加载）
-            planned_h = 0
-            try:
-                if sched.task_id:
-                    # 直接从数据库获取，不通过 ORM 懒加载
-                    task = db.session.query(Task).filter_by(id=sched.task_id).first()
-                    planned_h = task.estimated_hours if task else 0
-            except:
-                planned_h = 0
-
-            # 检查是否有反馈
-            if sched.id in feedback_dict:
-                fb = feedback_dict[sched.id]
-                analysis_data['task_details'].append({
-                    'title': sched.task_title,
-                    'category': sched.category or '其他',
-                    'status': fb.completion_status,
-                    'planned_hours': planned_h,
-                    'actual_hours': fb.actual_hours or 0,
-                    'notes': fb.notes
-                })
-            # 如果没有反馈但日程已完成，也加入统计
-            elif sched.status in ['completed', 'partial']:
-                duration = (datetime.combine(sched.date, sched.end_time) -
-                           datetime.combine(sched.date, sched.start_time)).total_seconds() / 3600
-                analysis_data['task_details'].append({
-                    'title': sched.task_title,
-                    'category': sched.category or '其他',
-                    'status': '已完成' if sched.status == 'completed' else '部分完成',
-                    'planned_hours': planned_h,
-                    'actual_hours': round(duration, 1),
-                    'notes': ''
-                })
+    print(f'[DEBUG] 统计完成，耗时: {time.time() - start_time:.2f}秒')
 
     # 获取每日复盘数据
+    print(f'[DEBUG] 查询复盘数据...')
     reflections = DailyReflection.query.filter(
         DailyReflection.user_id == current_user.id,
         DailyReflection.reflection_date.between(start_date, end_date)
     ).order_by(DailyReflection.reflection_date).all()
+    print(f'[DEBUG] 复盘查询完成，数量: {len(reflections)}，耗时: {time.time() - start_time:.2f}秒')
 
     # 构建复盘数据
     reflection_data = []
@@ -311,7 +272,7 @@ def generate_summary():
         return redirect(url_for('summary.view_summary', summary_id=summary.id))
 
     # 直接生成总结和建议 - 不调用AI，直接拼接复盘数据
-    print(f"[DEBUG] 开始生成{title}（直接拼接复盘数据）...")
+    period_str = f"{start_date.strftime('%Y-%m-%d')} 至 {end_date.strftime('%Y-%m-%d')}"
 
     # 构建总结内容
     summary_parts = []
@@ -319,7 +280,7 @@ def generate_summary():
     # 总体评价
     summary_parts.append(f"""## 📊 总体评价
 
-**时间范围**：{analysis_data['period']}
+**时间范围**：{period_str}
 **复盘天数**：{reflection_stats['total_days']}天
 **深度工作**：总时长{reflection_stats['total_deep_work_hours']}小时，平均每日{reflection_stats['avg_deep_work_hours']}小时
 **长期价值**：{long_term_value_count}天产生长期价值，占比{reflection_stats['long_term_value_ratio']}%
@@ -431,16 +392,19 @@ def generate_summary():
 
     summary.ai_suggestions = '\n\n'.join(suggestions)
 
-    print(f"[DEBUG] {title}生成完成")
+    print(f"[DEBUG] 总结内容生成完成，耗时: {time.time() - start_time:.2f}秒")
 
+    print(f"[DEBUG] 开始提交数据库...")
     try:
         db.session.commit()
+        print(f"[DEBUG] 数据库提交成功，总耗时: {time.time() - start_time:.2f}秒")
         flash(f'{title}生成成功', 'success')
     except Exception as e:
         print(f"[DEBUG] 数据库提交失败: {str(e)}")
         db.session.rollback()
         flash(f'保存失败：{str(e)}', 'danger')
 
+    print(f"[DEBUG] 准备重定向到: /summary/{summary.id}")
     return redirect(url_for('summary.view_summary', summary_id=summary.id))
 
 
