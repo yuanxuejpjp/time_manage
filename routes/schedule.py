@@ -660,20 +660,26 @@ def feedback(schedule_id):
         # 更新日程状态
         schedule.status = feedback_record.completion_status
 
-        # 更新奖励进度
-        if feedback_record.completion_status in ['已完成', '部分完成'] and feedback_record.actual_hours:
-            if schedule.category:
-                update_reward_progress(schedule.category, feedback_record.actual_hours)
+        # 计算日程时长
+        duration = (datetime.combine(schedule.date, schedule.end_time) -
+                   datetime.combine(schedule.date, schedule.start_time)).total_seconds() / 3600
 
-        # 如果有关联任务且已完成，更新任务状态
-        if schedule.task_id and feedback_record.completion_status == '已完成':
-            task = Task.query.get(schedule.task_id)
-            if task and task.status == 'pending':
-                # 检查是否所有关联的日程都完成了
-                all_schedules = Schedule.query.filter_by(task_id=task.id).all()
-                if all(s.status == 'completed' for s in all_schedules):
-                    task.status = 'completed'
-                    task.completed_at = datetime.now()
+        # 更新奖励进度
+        if feedback_record.completion_status in ['已完成', '部分完成']:
+            actual_hours = feedback_record.actual_hours if feedback_record.actual_hours else duration
+            if schedule.category:
+                update_reward_progress(schedule.category, actual_hours)
+
+            # 如果有关联任务，减少任务的预计时长
+            if schedule.task_id and feedback_record.completion_status == '已完成':
+                task = Task.query.get(schedule.task_id)
+                if task and task.status == 'pending':
+                    # 减少已完成的时长
+                    task.estimated_hours = max(0, task.estimated_hours - actual_hours)
+                    # 如果时长为0，标记任务完成
+                    if task.estimated_hours <= 0:
+                        task.status = 'completed'
+                        task.completed_at = datetime.now()
 
         try:
             db.session.commit()
@@ -787,16 +793,6 @@ def toggle_status(schedule_id):
 
         # 提交状态更新
         db.session.commit()
-
-        # 如果有关联任务，检查是否所有日程都完成了
-        if schedule.task_id:
-            task = Task.query.get(schedule.task_id)
-            if task and task.status == 'pending':
-                all_schedules = Schedule.query.filter_by(task_id=task.id).all()
-                if all(s.status == 'completed' for s in all_schedules):
-                    task.status = 'completed'
-                    task.completed_at = datetime.now()
-                db.session.commit()
 
         status_map = {
             'scheduled': '已安排',
