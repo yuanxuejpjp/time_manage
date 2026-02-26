@@ -18,6 +18,8 @@ if os.getenv('DATABASE_URL'):
     database_url = os.getenv('DATABASE_URL')
     # 确保使用 postgresql:// 前缀
     database_url = database_url.replace('postgres://', 'postgresql://')
+    # 使用 pg8000 驱动（兼容 Python 3.14）
+    database_url = database_url.replace('postgresql://', 'postgresql+pg8000://')
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 else:
     # 本地开发使用SQLite
