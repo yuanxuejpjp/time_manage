@@ -15,7 +15,17 @@ app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', 'dev-secret-key-change-
 # 数据库配置：Render使用PostgreSQL，本地开发使用SQLite
 if os.getenv('DATABASE_URL'):
     # Render提供的PostgreSQL数据库
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL').replace('postgres://', 'postgresql://')
+    database_url = os.getenv('DATABASE_URL')
+    # 确保使用 postgresql:// 前缀
+    database_url = database_url.replace('postgres://', 'postgresql://')
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+    # PostgreSQL 连接池配置
+    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+        'pool_pre_ping': True,  # 检查连接是否有效
+        'pool_recycle': 300,    # 5分钟后回收连接
+        'pool_size': 10,
+        'max_overflow': 20
+    }
 else:
     # 本地开发使用SQLite
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///timemaster.db'
