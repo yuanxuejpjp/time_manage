@@ -187,6 +187,33 @@ def generate_schedule():
         Task.status == 'pending'
     ).all()
 
+    # 分离会议和普通任务
+    # 会议任务：只在截止日期当天安排
+    # 普通任务：可以提前安排
+    meeting_tasks = []
+    regular_tasks = []
+
+    if schedule_type == 'today':
+        # 今日计划：只安排截止日期是今天的会议
+        for task in all_tasks:
+            if task.is_meeting:
+                # 会议只在当天安排
+                if task.deadline and task.deadline.date() == start_date:
+                    meeting_tasks.append(task)
+            else:
+                # 普通任务可以提前安排
+                regular_tasks.append(task)
+    else:
+        # 本周计划：会议只在各自的截止日期安排
+        for task in all_tasks:
+            if task.is_meeting:
+                # 检查会议截止日期是否在本周内
+                if task.deadline and start_date <= task.deadline.date() <= end_date:
+                    meeting_tasks.append(task)
+            else:
+                # 普通任务可以提前安排
+                regular_tasks.append(task)
+
     # 检查是否有之前安排但未完成的任务（延续任务）
     previous_uncompleted = []
     if schedule_type == 'today':
@@ -207,9 +234,6 @@ def generate_schedule():
             Schedule.status == 'scheduled'
         ).all()
         previous_uncompleted = [s for s in prev_schedules if s.task_id]
-
-    meeting_tasks = [t for t in all_tasks if t.is_meeting]
-    regular_tasks = [t for t in all_tasks if not t.is_meeting]
 
     # 获取固定日程
     fixed_schedules = []
@@ -736,25 +760,42 @@ def toggle_status(schedule_id):
             if schedule.category:
                 update_reward_progress(schedule.category, duration)
 
+            # 如果有关联任务，减少任务的预计时长
+            if schedule.task_id:
+                task = Task.query.get(schedule.task_id)
+                if task and task.status == 'pending':
+                    # 减少已完成的时长
+                    task.estimated_hours = max(0, task.estimated_hours - duration)
+                    # 如果时长为0，标记任务完成
+                    if task.estimated_hours <= 0:
+                        task.status = 'completed'
+                        task.completed_at = datetime.now()
+
         # 如果从完成状态改为非完成状态，减少进度
         elif old_status == 'completed' and new_status != 'completed':
             if schedule.category:
                 decrease_reward_progress(schedule.category, duration)
 
+            # 如果有关联任务，恢复任务的预计时长
+            if schedule.task_id:
+                task = Task.query.get(schedule.task_id)
+                if task and task.status == 'completed':
+                    # 恢复时长（反向操作）
+                    task.estimated_hours = task.estimated_hours + duration
+                    task.status = 'pending'
+                    task.completed_at = None
+
         # 提交状态更新
         db.session.commit()
 
-        # 如果有关联任务，更新任务状态
+        # 如果有关联任务，检查是否所有日程都完成了
         if schedule.task_id:
             task = Task.query.get(schedule.task_id)
-            if task:
+            if task and task.status == 'pending':
                 all_schedules = Schedule.query.filter_by(task_id=task.id).all()
                 if all(s.status == 'completed' for s in all_schedules):
                     task.status = 'completed'
                     task.completed_at = datetime.now()
-                elif task.status == 'completed' and new_status != 'completed':
-                    task.status = 'pending'
-                    task.completed_at = None
                 db.session.commit()
 
         status_map = {
