@@ -271,95 +271,83 @@ def generate_summary():
         flash(f'{title}生成失败：暂无复盘数据', 'warning')
         return redirect(url_for('summary.view_summary', summary_id=summary.id))
 
-    # 直接生成总结和建议 - 不调用AI，直接拼接复盘数据
+    # 直接生成总结 - 只展示有内容的条目
     period_str = f"{start_date.strftime('%Y-%m-%d')} 至 {end_date.strftime('%Y-%m-%d')}"
 
     # 构建总结内容
     summary_parts = []
 
-    # 总体评价
-    summary_parts.append(f"""## 📊 总体评价
+    # 时间范围标题
+    summary_parts.append(f"""# 📊 {period_str}
+复盘天数：{reflection_stats['total_days']}天
 
-**时间范围**：{period_str}
-**复盘天数**：{reflection_stats['total_days']}天
-**深度工作**：总时长{reflection_stats['total_deep_work_hours']}小时，平均每日{reflection_stats['avg_deep_work_hours']}小时
-**长期价值**：{long_term_value_count}天产生长期价值，占比{reflection_stats['long_term_value_ratio']}%
-**认知更新**：改变判断{changed_judgment_count}次""")
+---
+""")
 
-    # 核心推进
+    # 核心推进 - 只在有数据时显示
     core_progress_list = []
     for r in reflection_data:
         if r.get('core_progress'):
             value_tag = ' 🌟' if r.get('is_long_term_value') else ''
-            core_progress_list.append(f"- **{r['date']}**{value_tag}：{r['core_progress']}")
+            core_progress_list.append(f"- **{r['date']}**{value_tag} {r['core_progress']}")
 
     if core_progress_list:
-        summary_parts.append(f"""
+        summary_parts.append(f"""## 🎯 核心推进
 
-## 🎯 核心推进
+{chr(10).join(core_progress_list)}
 
-{chr(10).join(core_progress_list)}""")
-    else:
-        summary_parts.append(f"""
+---""")
 
-## 🎯 核心推进
-
-暂无核心推进记录""")
-
-    # 深度工作分析
-    summary_parts.append(f"""
-
-## ⏰ 深度工作分析
+    # 深度工作 - 只在有数据时显示
+    if reflection_stats['total_deep_work_hours'] > 0:
+        summary_parts.append(f"""## ⏰ 深度工作
 
 - **总时长**：{reflection_stats['total_deep_work_hours']}小时
-- **平均每日**：{reflection_stats['avg_deep_work_hours']}小时""")
+- **平均每日**：{reflection_stats['avg_deep_work_hours']}小时
+
+---""")
 
     # 关键领悟
     if key_insights:
         insight_list = [f"- **{i['date']}**：{i['insight']}" for i in key_insights]
-        summary_parts.append(f"""
+        summary_parts.append(f"""## 💡 关键领悟
 
-## 💡 关键领悟
+{chr(10).join(insight_list)}
 
-{chr(10).join(insight_list)}""")
-    else:
-        summary_parts.append(f"""
-
-## 💡 关键领悟
-
-暂无关键领悟记录""")
+---""")
 
     # 时间浪费
     if time_waste_list:
-        waste_list = [f"- **{w['date']}**：{w['waste']}" + (f"（原因：{w['reason']}）" if w.get('reason') else '') for w in time_waste_list]
-        summary_parts.append(f"""
+        waste_list = [f"- **{w['date']}**：{w['waste']}" + (f"（{w['reason']}）" if w.get('reason') else '') for w in time_waste_list]
+        summary_parts.append(f"""## ⚠️ 时间浪费
 
-## ⚠️ 时间浪费分析
+{chr(10).join(waste_list)}
 
-{chr(10).join(waste_list)}""")
-    else:
-        summary_parts.append(f"""
-
-## ⚠️ 时间浪费分析
-
-🎉 很棒！这段时间没有记录时间浪费""")
+---""")
 
     # MIT执行回顾
     if mit_list:
         mit_summary = [f"- **{m['date']}**：{m['mit']}" for m in mit_list]
-        summary_parts.append(f"""
+        summary_parts.append(f"""## 📋 明日关键任务(MIT)
 
-## 📋 明日关键任务(MIT)回顾
+{chr(10).join(mit_summary)}
 
-{chr(10).join(mit_summary)}""")
-    else:
-        summary_parts.append(f"""
+---""")
 
-## 📋 明日关键任务(MIT)回顾
+    # 如果没有任何内容
+    if len(summary_parts) == 1:  # 只有标题
+        summary_parts[0] = f"""# 📊 {period_str}
 
-暂无MIT记录""")
+暂无复盘数据，请先在"每日复盘"中记录内容。
 
-    # 组合总结
+---
+💡 建议每天花5分钟记录：
+1. 今日核心推进
+2. 深度工作时间
+3. 关键领悟
+4. 明日关键任务"""
+
+    # 组装总结
     summary.ai_summary = ''.join(summary_parts)
 
     # 生成改进建议
