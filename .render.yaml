@@ -9,6 +9,3 @@ services:
         generateValue: true
       - key: PYTHON_VERSION
         value: 3.11
-      - key: DATABASE_URL
-
-
