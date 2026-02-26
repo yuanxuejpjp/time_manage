@@ -19,11 +19,6 @@ if os.getenv('DATABASE_URL'):
     # 确保使用 postgresql:// 前缀
     database_url = database_url.replace('postgres://', 'postgresql://')
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
-    # PostgreSQL 连接池配置（简化版）
-    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-        'pool_pre_ping': True,
-        'pool_recycle': 300
-    }
 else:
     # 本地开发使用SQLite
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///timemaster.db'
