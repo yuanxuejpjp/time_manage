@@ -217,16 +217,18 @@ with app.app_context():
     try:
         from sqlalchemy import inspect, text
         inspector = inspect(db.engine)
-        columns = [col['name'] for col in inspector.get_columns('category_progress')]
+        # 只在表存在时检查列
+        if inspector.has_table('category_progress'):
+            columns = [col['name'] for col in inspector.get_columns('category_progress')]
 
-        if 'total_hours' not in columns:
-            print("检测到 category_progress 表缺少 total_hours 字段，正在添加...")
-            if 'postgresql' in str(db.engine.url):
-                db.session.execute(text("ALTER TABLE category_progress ADD COLUMN total_hours FLOAT DEFAULT 0.0"))
-            else:  # SQLite
-                db.session.execute(text("ALTER TABLE category_progress ADD COLUMN total_hours FLOAT DEFAULT 0.0"))
-            db.session.commit()
-            print("✓ total_hours 字段添加成功！")
+            if 'total_hours' not in columns:
+                print("检测到 category_progress 表缺少 total_hours 字段，正在添加...")
+                if 'postgresql' in str(db.engine.url):
+                    db.session.execute(text("ALTER TABLE category_progress ADD COLUMN total_hours FLOAT DEFAULT 0.0"))
+                else:  # SQLite
+                    db.session.execute(text("ALTER TABLE category_progress ADD COLUMN total_hours FLOAT DEFAULT 0.0"))
+                db.session.commit()
+                print("✓ total_hours 字段添加成功！")
     except Exception as e:
         print(f"迁移检查: {e}")
         db.session.rollback()
