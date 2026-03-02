@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required, current_user
 from datetime import datetime, date, timedelta
-from sqlalchemy import and_
+from sqlalchemy import and_, or_
 from models import db, FixedSchedule, ImportantDate
 
 fixed_bp = Blueprint('fixed', __name__)
@@ -181,7 +181,7 @@ def week_schedule():
         FixedSchedule.user_id == current_user.id,
         FixedSchedule.is_active == True,
         FixedSchedule.start_date <= end_of_week,
-        db.or_(FixedSchedule.end_date == None, FixedSchedule.end_date >= start_of_week)
+        or_(FixedSchedule.end_date == None, FixedSchedule.end_date >= start_of_week)
     ).all()
 
     # 构建周日程
@@ -209,7 +209,7 @@ def list_dates():
     dates = ImportantDate.query.filter_by(
         user_id=current_user.id
     ).filter(
-        db.or_(ImportantDate.event_date >= today, ImportantDate.is_recurring == True)
+        or_(ImportantDate.event_date >= today, ImportantDate.is_recurring == True)
     ).order_by(ImportantDate.event_date).all()
 
     # 分为即将到来的和重复的
@@ -427,7 +427,7 @@ def upcoming_events():
         FixedSchedule.is_active == True,
         FixedSchedule.day_of_week == today_weekday,
         FixedSchedule.start_date <= today,
-        db.or_(FixedSchedule.end_date == None, FixedSchedule.end_date >= today)
+        or_(FixedSchedule.end_date == None, FixedSchedule.end_date >= today)
     ).order_by(FixedSchedule.start_time).all()
 
     return jsonify({
