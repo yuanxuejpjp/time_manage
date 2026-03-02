@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, time
 import requests
 import json
 import re
+from sqlalchemy import or_
 from models import db, Task, Schedule, Feedback, RewardProgress, FixedSchedule, ImportantDate
 
 schedule_bp = Blueprint('schedule', __name__)
@@ -244,7 +245,7 @@ def generate_schedule():
             FixedSchedule.is_active == True,
             FixedSchedule.day_of_week == weekday,
             FixedSchedule.start_date <= start_date,
-            db.or_(FixedSchedule.end_date == None, FixedSchedule.end_date >= start_date)
+            or_(FixedSchedule.end_date == None, FixedSchedule.end_date >= start_date)
         ).all()
         fixed_schedules.extend(day_fixed)
     else:
@@ -257,7 +258,7 @@ def generate_schedule():
                 FixedSchedule.is_active == True,
                 FixedSchedule.day_of_week == weekday,
                 FixedSchedule.start_date <= day,
-                db.or_(FixedSchedule.end_date == None, FixedSchedule.end_date >= day)
+                or_(FixedSchedule.end_date == None, FixedSchedule.end_date >= day)
             ).all()
             fixed_schedules.extend([(fs, day) for fs in day_fixed])
 
