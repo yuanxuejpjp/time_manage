@@ -29,7 +29,7 @@
                 <h6 class="mb-0">{{ weekdays[day] }}</h6>
             </div>
             <div class="card-body py-2">
-                {% set day_schedules = schedules|selectattr('day_of_week', day)|list %}
+                {% set day_schedules = schedules|selectattr('day_of_week', 'equalto', day)|list %}
                 {% if day_schedules %}
                     {% for sched in day_schedules %}
                         <div class="card mb-2 border-{{ sched.color }}" style="border-left: 4px solid !important;">
