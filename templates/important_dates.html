@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+
+{% block title %}重要日子 - 时间掌控者{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="bi bi-calendar-event"></i> 重要日子</h2>
+            <div>
+                <a href="{{ url_for('fixed.dates_calendar') }}" class="btn btn-outline-primary me-2">
+                    <i class="bi bi-calendar"></i> 日历视图
+                </a>
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addDateModal">
+                    <i class="bi bi-plus-lg"></i> 添加重要日子
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 即将到来的日子 -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-calendar-check"></i> 即将到来</h5>
+            </div>
+            <div class="card-body">
+                {% if upcoming %}
+                    <div class="row">
+                        {% for imp_date in upcoming %}
+                            <div class="col-md-6 col-lg-4 mb-3">
+                                <div class="card border-{{ imp_date.color }}" style="border-left: 4px solid !important;">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div>
+                                                <h6 class="mb-1">{{ imp_date.title }}</h6>
+                                                <p class="mb-1 text-muted">
+                                                    <i class="bi bi-calendar"></i> {{ imp_date.event_date|date_filter }}
+                                                    {% if imp_date.event_time %}
+                                                        <i class="bi bi-clock ms-2"></i> {{ imp_date.event_time|time_filter }}
+                                                    {% endif %}
+                                                </p>
+                                                {% if imp_date.description %}
+                                                    <p class="small text-muted mb-1">{{ imp_date.description }}</p>
+                                                {% endif %}
+                                                <span class="badge bg-{{ imp_date.color }}">
+                                                    {{ imp_date.date_type|date_type_filter }}
+                                                </span>
+                                            </div>
+                                            {% if imp_date.remind_days_before > 0 %}
+                                                <span class="badge bg-info">
+                                                    {{ imp_date.remind_days_before }}天前提醒
+                                                </span>
+                                            {% endif %}
+                                        </div>
+                                        <div class="d-flex gap-1 mt-2">
+                                            <a href="{{ url_for('fixed.edit_date', date_id=imp_date.id) }}" class="btn btn-sm btn-outline-primary">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                            <form method="POST" action="{{ url_for('fixed.delete_date', date_id=imp_date.id) }}"
+                                                  onsubmit="return confirm('确定删除此重要日子？')">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-muted text-center py-3">
+                        <i class="bi bi-calendar-x"></i> 未来没有安排的重要日子
+                    </p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 添加重要日子模态框 -->
+<div class="modal fade" id="addDateModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-plus-circle"></i> 添加重要日子</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('fixed.add_date') }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="title" class="form-label">标题 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="title" name="title" required>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="event_date" class="form-label">日期 <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" id="event_date" name="event_date" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="event_time" class="form-label">时间</label>
+                            <input type="time" class="form-control" id="event_time" name="event_time">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="date_type" class="form-label">类型</label>
+                            <select class="form-select" id="date_type" name="date_type">
+                                <option value="birthday">🎂 生日</option>
+                                <option value="anniversary">💝 纪念日</option>
+                                <option value="deadline">📅 截止日期</option>
+                                <option value="holiday">🎉 节日</option>
+                                <option value="other">📌 其他</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="color" class="form-label">颜色标记</label>
+                            <select class="form-select" id="color" name="color">
+                                <option value="primary">蓝色</option>
+                                <option value="success">绿色</option>
+                                <option value="warning">橙色</option>
+                                <option value="danger">红色</option>
+                                <option value="info">青色</option>
+                                <option value="dark">灰色</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="remind_days_before" class="form-label">提前提醒</label>
+                            <input type="number" class="form-control" id="remind_days_before" name="remind_days_before"
+                                   value="0" min="0" max="30">
+                            <small class="text-muted">0=当天</small>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">描述</label>
+                        <textarea class="form-control" id="description" name="description" rows="2"
+                                  placeholder="备注信息..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">添加</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

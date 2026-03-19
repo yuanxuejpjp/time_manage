@@ -1,0 +1,53 @@
+2026-02-23 13:35:35.975725: Calling API with URL: https://api.deepseek.com/v1/chat/completions
+2026-02-23 13:35:35.975725: API Key: sk-132196f...
+2026-02-23 13:35:39.392970: Calling API with URL: https://api.deepseek.com/v1/chat/completions
+2026-02-23 13:35:39.392970: API Key: sk-132196f...
+2026-02-23 13:35:42.486069: Response status: 200
+2026-02-23 13:35:42.782195: Calling API with URL: https://api.deepseek.com/v1/chat/completions
+2026-02-23 13:35:42.782195: API Key: sk-132196f...
+2026-02-23 13:35:43.098375: Calling API with URL: https://api.deepseek.com/v1/chat/completions
+2026-02-23 13:35:43.098375: API Key: sk-132196f...
+2026-02-23 13:35:44.057385: Calling API with URL: https://api.deepseek.com/v1/chat/completions
+2026-02-23 13:35:44.057385: API Key: sk-132196f...
+2026-02-23 13:35:45.014389: Calling API with URL: https://api.deepseek.com/v1/chat/completions
+2026-02-23 13:35:45.014389: API Key: sk-132196f...
+2026-02-23 13:35:45.333617: Calling API with URL: https://api.deepseek.com/v1/chat/completions
+2026-02-23 13:35:45.333617: API Key: sk-132196f...
+2026-02-23 13:35:46.098624: Response status: 200
+2026-02-23 13:35:49.393819: Response status: 200
+2026-02-23 13:35:49.809707: Response status: 200
+2026-02-23 13:35:51.321800: Response status: 200
+2026-02-23 13:35:51.642648: Response status: 200
+2026-02-23 13:36:24.763099: Response status: 200
+2026-02-23 13:58:00.226367: Calling API with URL: https://api.deepseek.com/v1/chat/completions
+2026-02-23 13:58:00.226367: API Key: sk-132196f...
+2026-02-23 13:58:04.803583: Response status: 200
+2026-02-23 13:58:27.392939: Calling API with URL: https://api.deepseek.com/v1/chat/completions
+2026-02-23 13:58:27.392939: API Key: sk-132196f...
+2026-02-23 13:58:49.781667: Response status: 200
+2026-02-23 14:11:46.043548: Calling API with URL: https://api.deepseek.com/v1/chat/completions
+2026-02-23 14:11:46.043548: API Key: sk-132196f...
+2026-02-23 14:12:08.202299: Response status: 200
+2026-02-23 14:12:36.505100: Calling API with URL: https://api.deepseek.com/v1/chat/completions
+2026-02-23 14:12:36.505100: API Key: sk-132196f...
+2026-02-23 14:12:59.142860: Response status: 200
+2026-02-23 14:18:28.112694: Calling API with URL: https://api.deepseek.com/v1/chat/completions
+2026-02-23 14:18:28.112694: API Key: sk-132196f...
+2026-02-23 14:18:28.112891: Max tokens: 8000, Timeout: 120
+2026-02-23 14:18:49.896018: Response status: 200
+2026-02-23 14:21:30.167518: Calling API with URL: https://api.deepseek.com/v1/chat/completions
+2026-02-23 14:21:30.167518: API Key: sk-132196f...
+2026-02-23 14:21:30.167518: Max tokens: 8000, Timeout: 120
+2026-02-23 14:21:50.143623: Response status: 200
+2026-02-23 14:26:47.260752: Calling API with URL: https://api.deepseek.com/v1/chat/completions
+2026-02-23 14:26:47.260752: API Key: sk-132196f...
+2026-02-23 14:26:47.260752: Max tokens: 8000, Timeout: 120
+2026-02-23 14:27:08.524789: Response status: 200
+2026-02-23 14:30:38.721033: Calling API with URL: https://api.deepseek.com/v1/chat/completions
+2026-02-23 14:30:38.721033: API Key: sk-132196f...
+2026-02-23 14:30:38.721033: Max tokens: 8000, Timeout: 120
+2026-02-23 14:31:02.161071: Response status: 200
+2026-02-23 14:35:28.443098: Calling API with URL: https://api.deepseek.com/v1/chat/completions
+2026-02-23 14:35:28.443098: API Key: sk-132196f...
+2026-02-23 14:35:28.443098: Max tokens: 8000, Timeout: 120
+2026-02-23 14:35:50.325353: Response status: 200

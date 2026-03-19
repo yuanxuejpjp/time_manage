@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}日程反馈 - 时间掌控者{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0"><i class="bi bi-chat-dots"></i> 日程反馈</h4>
+            </div>
+            <div class="card-body">
+                <div class="mb-4">
+                    <h5>{{ schedule.task_title }}</h5>
+                    <p class="text-muted">
+                        <i class="bi bi-calendar"></i> {{ schedule.date|date_filter }}
+                        <i class="bi bi-clock ms-3"></i> {{ schedule.start_time|time_filter }} - {{ schedule.end_time|time_filter }}
+                    </p>
+                    {% if schedule.category %}
+                        <span class="badge bg-secondary">{{ schedule.category }}</span>
+                    {% endif %}
+                </div>
+
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="completion_status" class="form-label">完成情况</label>
+                        <select class="form-select" id="completion_status" name="completion_status" required>
+                            <option value="未开始" {% if feedback and feedback.completion_status == '未开始' %}selected{% endif %}>未开始</option>
+                            <option value="部分完成" {% if feedback and feedback.completion_status == '部分完成' %}selected{% endif %}>部分完成</option>
+                            <option value="已完成" {% if feedback and feedback.completion_status == '已完成' %}selected{% endif %}>已完成</option>
+                            <option value="取消" {% if feedback and feedback.completion_status == '取消' %}selected{% endif %}>取消</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="actual_hours" class="form-label">实际花费时间（小时）</label>
+                        <input type="number" class="form-control" id="actual_hours" name="actual_hours"
+                               value="{{ feedback.actual_hours if feedback else '' }}" step="0.5" min="0">
+                        <small class="text-muted">记录实际花费的时间，用于统计和分析</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">备注</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="4"
+                                  placeholder="记录你的心得、遇到的问题或任何想法...">{{ feedback.notes if feedback else '' }}</textarea>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg"></i> 提交反馈
+                        </button>
+                        <a href="{{ url_for('schedule.view_schedule') }}" class="btn btn-outline-secondary">取消</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

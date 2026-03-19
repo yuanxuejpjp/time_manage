@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+
+{% block title %}编辑习惯 - {{ habit.title }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0"><i class="bi bi-pencil"></i> 编辑习惯</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="title" class="form-label">习惯名称 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="title" name="title"
+                               value="{{ habit.title }}" required>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="category" class="form-label">分类</label>
+                            <input type="text" class="form-control" id="category" name="category" list="habit-categories"
+                                   value="{{ habit.category }}">
+                            <datalist id="habit-categories">
+                                <option value="运动">
+                                <option value="学习">
+                                <option value="阅读">
+                                <option value="冥想">
+                                <option value="早起">
+                                <option value="健康饮食">
+                                <option value="其他">
+                            </datalist>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="icon" class="form-label">图标</label>
+                            <select class="form-select" id="icon" name="icon">
+                                <option value="star" {% if habit.icon == 'star' %}selected{% endif %}>⭐ 星星</option>
+                                <option value="heart" {% if habit.icon == 'heart' %}selected{% endif %}>❤️ 爱心</option>
+                                <option value="fire" {% if habit.icon == 'fire' %}selected{% endif %}>🔥 火焰</option>
+                                <option value="lightning" {% if habit.icon == 'lightning' %}selected{% endif %}>⚡ 闪电</option>
+                                <option value="sun" {% if habit.icon == 'sun' %}selected{% endif %}>☀️ 太阳</option>
+                                <option value="moon" {% if habit.icon == 'moon' %}selected{% endif %}>🌙 月亮</option>
+                                <option value="book" {% if habit.icon == 'book' %}selected{% endif %}>📚 书本</option>
+                                <option value="bicycle" {% if habit.icon == 'bicycle' %}selected{% endif %}>🚴 自行车</option>
+                                <option value="droplet" {% if habit.icon == 'droplet' %}selected{% endif %}>💧 水滴</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">描述</label>
+                        <textarea class="form-control" id="description" name="description" rows="2">{{ habit.description or '' }}</textarea>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="frequency" class="form-label">频率</label>
+                            <select class="form-select" id="frequency" name="frequency" onchange="toggleWeeklyDays()">
+                                <option value="daily" {% if habit.frequency == 'daily' %}selected{% endif %}>每天</option>
+                                <option value="weekdays" {% if habit.frequency == 'weekdays' %}selected{% endif %}>工作日</option>
+                                <option value="weekends" {% if habit.frequency == 'weekends' %}selected{% endif %}>周末</option>
+                                <option value="weekly" {% if habit.frequency == 'weekly' %}selected{% endif %}>每周指定天</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="target_value" class="form-label">目标值</label>
+                            <input type="number" class="form-control" id="target_value" name="target_value"
+                                   value="{{ habit.target_value }}" step="0.1" min="0.1">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="target_unit" class="form-label">单位</label>
+                            <input type="text" class="form-control" id="target_unit" name="target_unit" value="{{ habit.target_unit }}"
+                                   list="unit-list">
+                            <datalist id="unit-list">
+                                <option value="次">
+                                <option value="分钟">
+                                <option value="小时">
+                                <option value="页">
+                                <option value="章">
+                                <option value="公里">
+                            </datalist>
+                        </div>
+                    </div>
+
+                    <div id="weekly-days-container" class="mb-3" style="display: {% if habit.frequency == 'weekly' %}block{% else %}none{% endif %};">
+                        <label class="form-label">选择星期</label>
+                        <div class="d-flex gap-2 flex-wrap">
+                            {% set days = habit.target_days.split(',') if habit.target_days else [] %}
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="target_days" value="0" id="day0"
+                                       {% if '0' in days %}checked{% endif %}>
+                                <label class="form-check-label" for="day0">周一</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="target_days" value="1" id="day1"
+                                       {% if '1' in days %}checked{% endif %}>
+                                <label class="form-check-label" for="day1">周二</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="target_days" value="2" id="day2"
+                                       {% if '2' in days %}checked{% endif %}>
+                                <label class="form-check-label" for="day2">周三</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="target_days" value="3" id="day3"
+                                       {% if '3' in days %}checked{% endif %}>
+                                <label class="form-check-label" for="day3">周四</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="target_days" value="4" id="day4"
+                                       {% if '4' in days %}checked{% endif %}>
+                                <label class="form-check-label" for="day4">周五</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="target_days" value="5" id="day5"
+                                       {% if '5' in days %}checked{% endif %}>
+                                <label class="form-check-label" for="day5">周六</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="target_days" value="6" id="day6"
+                                       {% if '6' in days %}checked{% endif %}>
+                                <label class="form-check-label" for="day6">周日</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="reminder_time" class="form-label">每日提醒时间</label>
+                        <input type="time" class="form-control" id="reminder_time" name="reminder_time"
+                               value="{{ habit.reminder_time|time_filter if habit.reminder_time else '' }}">
+                        <small class="text-muted">每天在这个时间提醒你完成习惯</small>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save"></i> 保存
+                        </button>
+                        <a href="{{ url_for('habits.list_habits') }}" class="btn btn-outline-secondary">取消</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleWeeklyDays() {
+    const frequency = document.getElementById('frequency').value;
+    const weeklyDaysContainer = document.getElementById('weekly-days-container');
+    weeklyDaysContainer.style.display = frequency === 'weekly' ? 'block' : 'none';
+}
+</script>
+{% endblock %}

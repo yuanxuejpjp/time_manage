@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+
+{% block title %}习惯日历 - 时间掌控者{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="bi bi-calendar3"></i> 习惯日历</h2>
+            <a href="{{ url_for('habits.list_habits') }}" class="btn btn-outline-secondary">返回列表</a>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <a href="{{ url_for('habits.calendar_view', year=prev_year, month=prev_month) }}"
+                       class="btn btn-outline-primary">
+                        <i class="bi bi-chevron-left"></i> 上个月
+                    </a>
+                    <h4 class="mb-0">{{ month_name }} {{ year }}</h4>
+                    <a href="{{ url_for('habits.calendar_view', year=next_year, month=next_month) }}"
+                       class="btn btn-outline-primary">
+                        下个月 <i class="bi bi-chevron-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 习惯图例 -->
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body py-2">
+                <div class="d-flex flex-wrap gap-3">
+                    <strong>图例：</strong>
+                    {% for habit in habits %}
+                        <span class="badge bg-secondary">
+                            <i class="bi bi-{{ habit.icon }}"></i> {{ habit.title }}
+                        </span>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 日历视图 -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered text-center">
+                        <thead>
+                            <tr>
+                                <th>一</th>
+                                <th>二</th>
+                                <th>三</th>
+                                <th>四</th>
+                                <th>五</th>
+                                <th>六</th>
+                                <th>日</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% set start_weekday = first_day.weekday() %}
+                            {% set days_in_month = last_day.day %}
+                            {% set total_cells = ((start_weekday + days_in_month) // 7 + 1) * 7 %}
+
+                            {% for row in range(total_cells // 7) %}
+                                <tr>
+                                    {% for col in range(7) %}
+                                        {% set day_num = row * 7 + col - start_weekday + 1 %}
+                                        {% set day_num = day_num if day_num > 0 else '' %}
+                                        <td style="height: 80px; vertical-align: top;" class="{% if day_num and checkin_dict[day_num|int] is defined %}table-light{% endif %}">
+                                            {% if day_num %}
+                                                <div class="d-flex justify-content-between">
+                                                    <strong>{{ day_num }}</strong>
+                                                    {% if day_num == now.day %}
+                                                        <span class="badge bg-primary">今天</span>
+                                                    {% endif %}
+                                                </div>
+                                                {% if checkin_dict[day_num|int] is defined %}
+                                                    <div class="mt-1">
+                                                        {% for habit_id in checkin_dict[day_num|int] %}
+                                                            {% for habit in habits if habit.id == habit_id %}
+                                                                <span class="badge bg-success" style="font-size: 0.7rem;" title="{{ habit.title }}">
+                                                                    <i class="bi bi-{{ habit.icon }}"></i>
+                                                                </span>
+                                                            {% endfor %}
+                                                        {% endfor %}
+                                                    </div>
+                                                {% endif %}
+                                            {% endif %}
+                                        </td>
+                                    {% endfor %}
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 当月统计 -->
+<div class="row mt-3">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">本月统计</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for habit in habits %}
+                        <div class="col-md-4 mb-3">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h6 class="card-title">
+                                        <i class="bi bi-{{ habit.icon }}"></i> {{ habit.title }}
+                                    </h6>
+                                    {% set monthly_checkins = habit.get_monthly_checkins(year, month) %}
+                                    <p class="mb-0">
+                                        <strong>{{ monthly_checkins|length }}</strong> 次打卡
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

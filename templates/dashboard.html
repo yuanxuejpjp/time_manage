@@ -1,0 +1,451 @@
+{% extends "base.html" %}
+
+{% block title %}仪表盘 - 时间掌控者{% endblock %}
+
+{% block content %}
+<style>
+.love-card {
+    border: none;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+.love-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 40px rgba(0,0,0,0.12);
+}
+.greeting-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 25px;
+    padding: 30px;
+    margin-bottom: 30px;
+    position: relative;
+    overflow: hidden;
+}
+.greeting-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+    animation: float 6s ease-in-out infinite;
+}
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+}
+.emoji-bounce {
+    animation: bounce 2s ease-in-out infinite;
+    display: inline-block;
+}
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+.progress-ring {
+    transform: rotate(-90deg);
+}
+.stat-number {
+    font-size: 2.5rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+.motivational-quote {
+    font-style: italic;
+    color: #666;
+    padding: 15px 20px;
+    background: #f8f9fa;
+    border-left: 4px solid #667eea;
+    border-radius: 10px;
+    margin-bottom: 20px;
+}
+.habit-card {
+    border: none;
+    border-radius: 15px;
+    transition: all 0.3s;
+}
+.habit-card:hover {
+    transform: scale(1.02);
+}
+.habit-card.checked {
+    background: linear-gradient(135deg, #d4fc79 0%, #96e6a1 100%) !important;
+}
+.schedule-item-cute {
+    border-left: 4px solid;
+    border-radius: 12px;
+    padding: 15px;
+    margin-bottom: 12px;
+    background: #f8f9fa;
+    transition: all 0.3s;
+}
+.schedule-item-cute:hover {
+    background: white;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+}
+</style>
+
+<!-- 问候卡片 -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="greeting-card">
+            <div class="position-relative">
+                <h2 class="mb-2">
+                    <span class="emoji-bounce">✨</span>
+                    {{ greeting_message }}, {{ current_user.username }}!
+                    <span class="emoji-bounce">✨</span>
+                </h2>
+                <p class="mb-0 fs-5" style="opacity: 0.9;">{{ today|today_str }} · {{ daily_encouragement }}</p>
+                <div class="mt-3">
+                    <span style="font-size: 2rem;">{{ daily_emoji }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 每日激励 -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="motivational-quote">
+            <i class="bi bi-quote"></i> {{ motivational_quote }} <i class="bi bi-quote"></i>
+        </div>
+    </div>
+</div>
+
+<!-- 今日统计卡片 -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card love-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;">
+            <div class="card-body text-center">
+                <div class="emoji-bounce mb-2">🎯</div>
+                <h6 class="card-title text-white opacity-75">今日完成</h6>
+                <div class="stat-number text-white">{{ today_progress }}%</div>
+                <p class="mb-0"><small>{{ completed_today }}/{{ total_today }} 项任务</small></p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card love-card" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); color: white;">
+            <div class="card-body text-center">
+                <div class="emoji-bounce mb-2">🔥</div>
+                <h6 class="card-title text-white opacity-75">紧急任务</h6>
+                <div class="stat-number text-white">{{ urgent_tasks|length }}</div>
+                <p class="mb-0"><small>待处理的高优先任务</small></p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card love-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white;">
+            <div class="card-body text-center">
+                <div class="emoji-bounce mb-2">📅</div>
+                <h6 class="card-title text-white opacity-75">今日日程</h6>
+                <div class="stat-number text-white">{{ today_schedules|length }}</div>
+                <p class="mb-0"><small>项计划安排</small></p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card love-card" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); color: white;">
+            <div class="card-body text-center">
+                <div class="emoji-bounce mb-2">⭐</div>
+                <h6 class="card-title text-white opacity-75">我的积分</h6>
+                <div class="stat-number text-white">{{ user_points }}</div>
+                <p class="mb-0"><small><a href="{{ url_for('reflection.daily_reflection') }}" class="text-white">每日复盘 →</a></small></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 今日习惯打卡 -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card love-card">
+            <div class="card-header d-flex justify-content-between align-items-center" style="background: transparent; border-bottom: 2px solid #f0f0f0;">
+                <div>
+                    <h5 class="mb-0"><span class="emoji-bounce">💪</span> 今日习惯</h5>
+                </div>
+                <a href="{{ url_for('habits.list_habits') }}" class="btn btn-sm btn-outline-primary rounded-pill">习惯中心</a>
+            </div>
+            <div class="card-body">
+                {% if today_habits %}
+                    <div class="row">
+                        {% for item in today_habits %}
+                            <div class="col-md-4 col-sm-6 mb-3">
+                                <div class="card habit-card h-100 {% if item.checked %}checked{% endif %}">
+                                    <div class="card-body p-3">
+                                        <div class="d-flex align-items-center">
+                                            <div class="emoji-bounce me-2" style="font-size: 2rem;">
+                                                {% if item.habit.icon == 'sun' %}☀️
+                                                {% elif item.habit.icon == 'moon' %}🌙
+                                                {% elif item.habit.icon == 'book' %}📚
+                                                {% elif item.habit.icon == 'droplet' %}💧
+                                                {% elif item.habit.icon == 'bicycle' %}🚴
+                                                {% elif item.habit.icon == 'music' %}🎵
+                                                {% elif item.habit.icon == 'palette' %}🎨
+                                                {% elif item.habit.icon == 'code' %}💻
+                                                {% else %}✅{% endif %}
+                                            </div>
+                                            <div>
+                                                <h6 class="mb-0">{{ item.habit.title }}</h6>
+                                                <small class="text-muted">
+                                                    {{ item.habit.target_value }}{{ item.habit.target_unit }}
+                                                    · 🔥 <strong>{{ item.streak }}</strong> 天连续
+                                                </small>
+                                            </div>
+                                            {% if item.checked %}
+                                                <div class="ms-auto">
+                                                    <span class="badge rounded-pill" style="background: #28a745; font-size: 1.2rem;">
+                                                        <i class="bi bi-check-circle"></i>
+                                                    </span>
+                                                </div>
+                                            {% else %}
+                                                <a href="{{ url_for('habits.checkin', habit_id=item.habit.id) }}"
+                                                   class="btn btn-sm rounded-pill ms-auto" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none;">
+                                                    打卡 💪
+                                                </a>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <div style="font-size: 3rem;">🌱</div>
+                        <p class="text-muted mt-2">还没有创建习惯，开始培养好习惯吧！</p>
+                        <a href="{{ url_for('habits.list_habits') }}" class="btn btn-primary rounded-pill">创建习惯</a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- 今日日程时间轴 -->
+    <div class="col-lg-6 mb-4">
+        <div class="card love-card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center" style="background: transparent; border-bottom: 2px solid #f0f0f0;">
+                <div>
+                    <h5 class="mb-0"><span class="emoji-bounce">📋</span> 今日日程</h5>
+                </div>
+                <a href="{{ url_for('schedule.view_schedule') }}" class="btn btn-sm btn-outline-primary rounded-pill">查看全部</a>
+            </div>
+            <div class="card-body">
+                {% if today_schedules %}
+                    <div class="schedule-timeline">
+                        {% for sched in today_schedules %}
+                            <div class="schedule-item-cute" style="border-left-color: {% if sched.status == 'completed' %}#28a745{% elif sched.is_meeting %}#dc3545{% elif sched.status == 'partial' %}#ffc107{% else %}#6c757d{% endif %};">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div style="flex: 1;">
+                                        <h6 class="mb-1">
+                                            {% if sched.is_meeting %}
+                                                <span class="badge me-1" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">👥 会议</span>
+                                            {% endif %}
+                                            {{ sched.task_title }}
+                                        </h6>
+                                        <small class="text-muted">
+                                            <i class="bi bi-clock"></i>
+                                            {{ sched.start_time|time_filter }} - {{ sched.end_time|time_filter }}
+                                            {% if sched.location %}
+                                                | <i class="bi bi-geo-alt"></i> {{ sched.location }}
+                                            {% endif %}
+                                        </small>
+                                        {% if sched.category and not sched.is_meeting %}
+                                            <span class="badge bg-light text-dark ms-2">{{ sched.category }}</span>
+                                        {% endif %}
+                                    </div>
+                                    <span class="badge rounded-pill" style="{% if sched.status == 'completed' %}background: #28a745;{% elif sched.status == 'partial' %}background: #ffc107;{% else %}background: #6c757d;{% endif %}">
+                                        {% if sched.status == 'completed' %}✅ 已完成
+                                        {% elif sched.status == 'partial' %}⏳ 进行中
+                                        {% elif sched.status == 'cancelled' %}❌ 已取消
+                                        {% else %}📝 已安排{% endif %}
+                                    </span>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <div style="font-size: 4rem;">📝</div>
+                        <p class="text-muted mt-3">今天还没有日程安排</p>
+                        <p class="text-muted small">让 AI 帮你规划美好的一天！</p>
+                        <a href="{{ url_for('schedule.view_schedule') }}" class="btn btn-primary rounded-pill mt-2" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none;">
+                            ✨ 生成智能日程
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- 紧急任务 -->
+    <div class="col-lg-6 mb-4">
+        <div class="card love-card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center" style="background: transparent; border-bottom: 2px solid #f0f0f0;">
+                <div>
+                    <h5 class="mb-0"><span class="emoji-bounce">🚨</span> 紧急任务</h5>
+                </div>
+                <a href="{{ url_for('tasks.list_tasks') }}" class="btn btn-sm btn-outline-primary rounded-pill">查看全部</a>
+            </div>
+            <div class="card-body">
+                {% if urgent_tasks %}
+                    <div class="list-group list-group-flush">
+                        {% for task in urgent_tasks[:5] %}
+                            <div class="list-group-item px-0" style="border: none; border-bottom: 1px solid #f0f0f0;">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <h6 class="mb-1">{{ task.title }}</h6>
+                                        <small class="text-muted">
+                                            <i class="bi bi-tag"></i> {{ task.category }}
+                                            {% if task.deadline %}
+                                                | <i class="bi bi-calendar"></i> {{ task.deadline|date_filter }}
+                                            {% endif %}
+                                        </small>
+                                    </div>
+                                    <span class="badge rounded-pill" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">🔥 高优先</span>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <div style="font-size: 4rem;">🎉</div>
+                        <p class="text-success mt-3 fw-bold">太棒了！没有紧急任务</p>
+                        <p class="text-muted small">享受你的自由时间吧~</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- 最新总结 -->
+    <div class="col-lg-6 mb-4">
+        <div class="card love-card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center" style="background: transparent; border-bottom: 2px solid #f0f0f0;">
+                <div>
+                    <h5 class="mb-0"><span class="emoji-bounce">📊</span> 最新总结</h5>
+                </div>
+                {% if latest_summary %}
+                    <a href="{{ url_for('summary.view_summary', summary_id=latest_summary.id) }}" class="btn btn-sm btn-outline-primary rounded-pill">查看详情</a>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                {% if latest_summary %}
+                    <h6 class="text-muted">
+                        {{ latest_summary.summary_type|summary_type_filter }} ·
+                        {{ latest_summary.start_date|date_filter }} - {{ latest_summary.end_date|date_filter }}
+                    </h6>
+                    <div class="mt-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <small class="text-muted">完成率</small>
+                            <small class="fw-bold" style="color: #667eea;">{{ latest_summary.completion_rate }}%</small>
+                        </div>
+                        <div class="progress" style="height: 12px; border-radius: 10px; background: #f0f0f0;">
+                            <div class="progress-bar rounded-pill" style="width: {{ latest_summary.completion_rate }}%; background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);">
+                            </div>
+                        </div>
+                    </div>
+                    {% if latest_summary.total_hours > 0 %}
+                        <div class="mt-3">
+                            <small class="text-muted">⏱️ 工作时长：<strong>{{ latest_summary.total_hours }}小时</strong></small>
+                        </div>
+                    {% endif %}
+                {% else %}
+                    <div class="text-center py-5">
+                        <div style="font-size: 3rem;">📔</div>
+                        <p class="text-muted mt-3">还没有生成总结</p>
+                        <a href="{{ url_for('summary.list_summaries') }}" class="btn btn-primary rounded-pill" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none;">
+                            生成总结
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- 每日复盘入口 -->
+    <div class="col-lg-6 mb-4">
+        <div class="card love-card h-100" style="background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);">
+            <div class="card-body text-center d-flex flex-column justify-content-center">
+                <div class="emoji-bounce mb-3" style="font-size: 4rem;">📝</div>
+                <h4 class="mb-3">今日复盘</h4>
+                <p class="text-muted mb-4">记录今天的收获与思考，<br>让每一天都有意义 ✨</p>
+                <a href="{{ url_for('reflection.daily_reflection') }}" class="btn btn-dark rounded-pill px-4" style="border: none; padding: 12px 30px;">
+                    开始复盘 🚀
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 动态问候和每日激励
+const hour = new Date().getHours();
+let greeting = '';
+let dailyEncouragement = '';
+let dailyEmoji = '';
+
+if (hour < 6) {
+    greeting = '夜深了';
+    dailyEncouragement = '注意休息，身体最重要 💤';
+    dailyEmoji = '🌙';
+} else if (hour < 9) {
+    greeting = '早上好';
+    dailyEncouragement = '美好的一天开始了，加油！☀️';
+    dailyEmoji = '🌅';
+} else if (hour < 12) {
+    greeting = '上午好';
+    dailyEncouragement = '保持专注，你可以的！💪';
+    dailyEmoji = '📚';
+} else if (hour < 14) {
+    greeting = '中午好';
+    dailyEncouragement = '记得休息和吃饭哦~ 🍜';
+    dailyEmoji = '☕';
+} else if (hour < 18) {
+    greeting = '下午好';
+    dailyEncouragement = '继续加油，你很棒！🌟';
+    dailyEmoji = '💫';
+} else if (hour < 22) {
+    greeting = '晚上好';
+    dailyEncouragement = '今天辛苦了，好好放松~ 🌙';
+    dailyEmoji = '🛋️';
+} else {
+    greeting = '夜深了';
+    dailyEncouragement = '早点休息，明天见 😴';
+    dailyEmoji = '🌜';
+}
+
+// 每日激励语录
+const quotes = [
+    "种一棵树最好的时间是十年前，其次是现在。💪",
+    "每一个不曾起舞的日子，都是对生命的辜负。✨",
+    "你今天的努力，是幸运的伏笔。🍀",
+    "星光不问赶路人，时光不负有心人。⭐",
+    "不积跬步，无以至千里。👣",
+    "坚持下去，你想要的都会有。🎯",
+    "每天进步一点点，成功离你更近一点。📈",
+    "相信自己的力量，你可以做到的！💫"
+];
+
+const motivationalQuote = quotes[Math.floor(Math.random() * quotes.length)];
+
+// 传递数据到模板（通过全局变量）
+window.greetingMessage = greeting;
+window.dailyEncouragement = dailyEncouragement;
+window.dailyEmoji = dailyEmoji;
+window.motivationalQuote = motivationalQuote;
+</script>
+{% endblock %}

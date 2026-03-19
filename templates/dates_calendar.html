@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}重要日子日历 - 时间掌控者{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="bi bi-calendar"></i> 重要日子日历</h2>
+            <a href="{{ url_for('fixed.list_dates') }}" class="btn btn-outline-secondary">返回列表</a>
+        </div>
+    </div>
+</div>
+
+<!-- 月份导航 -->
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <a href="{{ url_for('fixed.dates_calendar', year=prev_year, month=prev_month) }}"
+                       class="btn btn-outline-primary">
+                        <i class="bi bi-chevron-left"></i> 上个月
+                    </a>
+                    <h4 class="mb-0">{{ month }}月 {{ year }}</h4>
+                    <a href="{{ url_for('fixed.dates_calendar', year=next_year, month=next_month) }}"
+                       class="btn btn-outline-primary">
+                        下个月 <i class="bi bi-chevron-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 日历视图 -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <table class="table table-bordered text-center">
+                    <thead>
+                        <tr>
+                            <th>一</th>
+                            <th>二</th>
+                            <th>三</th>
+                            <th>四</th>
+                            <th>五</th>
+                            <th>六</th>
+                            <th>日</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% set total_cells = ((start_weekday + days_in_month) // 7 + 1) * 7 %}
+
+                        {% for row in range(total_cells // 7) %}
+                            <tr>
+                                {% for col in range(7) %}
+                                    {% set day_num = row * 7 + col - start_weekday + 1 %}
+                                    <td style="height: 100px; vertical-align: top;" class="{% if day_num and day_num <= days_in_month %}{% if now.day == day_num and now.month == month and now.year == year %}table-active{% endif %}{% endif %}">
+                                        {% if day_num and day_num <= days_in_month %}
+                                            <strong>{{ day_num }}</strong>
+                                            {% if dates_by_day[day_num|int] is defined %}
+                                                <div class="mt-1">
+                                                    {% for imp_date in dates_by_day[day_num|int] %}
+                                                        <span class="badge bg-{{ imp_date.color }} me-1" style="font-size: 0.7rem;">
+                                                            {{ imp_date.title }}
+                                                        </span>
+                                                    {% endfor %}
+                                                </div>
+                                            {% endif %}
+                                        {% endif %}
+                                    </td>
+                                {% endfor %}
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

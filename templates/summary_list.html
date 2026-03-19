@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+
+{% block title %}总结报表 - 时间掌控者{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="bi bi-graph-up"></i> 总结报表</h2>
+            <div>
+                <form method="POST" action="{{ url_for('summary.generate_summary') }}" class="d-inline">
+                    <input type="hidden" name="type" value="daily">
+                    <button type="submit" class="btn btn-primary me-2">
+                        <i class="bi bi-calendar-day"></i> 生成日报
+                    </button>
+                </form>
+                <form method="POST" action="{{ url_for('summary.generate_summary') }}" class="d-inline">
+                    <input type="hidden" name="type" value="weekly">
+                    <button type="submit" class="btn btn-outline-primary me-2">
+                        <i class="bi bi-calendar-week"></i> 生成周报
+                    </button>
+                </form>
+                <form method="POST" action="{{ url_for('summary.generate_summary') }}" class="d-inline">
+                    <input type="hidden" name="type" value="monthly">
+                    <button type="submit" class="btn btn-outline-primary">
+                        <i class="bi bi-calendar-month"></i> 生成月报
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 图表区域 -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">时间分布（近30天）</h5>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="pieChart30"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">各类时长对比</h5>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="barChart30"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 切换统计周期 -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="btn-group" role="group">
+            <button type="button" class="btn btn-outline-primary active" onclick="loadChartData('30')">近30天</button>
+            <button type="button" class="btn btn-outline-primary" onclick="loadChartData('90')">近90天</button>
+            <button type="button" class="btn btn-outline-primary" onclick="loadChartData('all')">全部时间</button>
+        </div>
+    </div>
+</div>
+
+<!-- 总结列表 -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">历史报告</h5>
+            </div>
+            <div class="card-body">
+                {% if summaries %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>类型</th>
+                                    <th>时间范围</th>
+                                    <th>完成率</th>
+                                    <th>总时长</th>
+                                    <th>生成时间</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for s in summaries %}
+                                    <tr>
+                                        <td>
+                                            <span class="badge bg-info">{{ s.summary_type|summary_type_filter }}</span>
+                                        </td>
+                                        <td>{{ s.start_date|date_filter }} 至 {{ s.end_date|date_filter }}</td>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="progress flex-grow-1 me-2" style="height: 8px;">
+                                                    <div class="progress-bar" role="progressbar"
+                                                         style="width: {{ s.completion_rate }}%"></div>
+                                                </div>
+                                                <small>{{ s.completion_rate }}%</small>
+                                            </div>
+                                        </td>
+                                        <td>{{ s.total_hours }}h</td>
+                                        <td>{{ s.created_at|datetime_filter }}</td>
+                                        <td>
+                                            <a href="{{ url_for('summary.view_summary', summary_id=s.id) }}"
+                                               class="btn btn-sm btn-outline-primary">查看</a>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-file-earmark-text text-muted" style="font-size: 3rem;"></i>
+                        <p class="text-muted mt-3">还没有生成任何总结</p>
+                        <p class="text-muted">点击上方按钮生成你的第一份报告</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let pieChart, barChart;
+
+function loadChartData(period) {
+    // 更新按钮状态
+    document.querySelectorAll('.btn-group .btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.textContent.includes(period === 'all' ? '全部' : period + '天')) {
+            btn.classList.add('active');
+        }
+    });
+
+    // 获取数据
+    fetch(`{{ url_for('summary.chart_data') }}?period=${period}`)
+        .then(res => res.json())
+        .then(data => {
+            updateCharts(data.labels, data.data);
+        });
+}
+
+function updateCharts(labels, data) {
+    if (pieChart) pieChart.destroy();
+    if (barChart) barChart.destroy();
+
+    const colors = [
+        '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
+        '#FF9F40', '#FF6384', '#C9CBCF', '#4BC0C0', '#FF6384'
+    ];
+
+    pieChart = new Chart(document.getElementById('pieChart30'), {
+        type: 'pie',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: data,
+                backgroundColor: colors.slice(0, labels.length)
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom' }
+            }
+        }
+    });
+
+    barChart = new Chart(document.getElementById('barChart30'), {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: '时长（小时）',
+                data: data,
+                backgroundColor: colors.slice(0, labels.length)
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: { display: true, text: '小时' }
+                }
+            }
+        }
+    });
+}
+
+// 初始加载
+loadChartData('30');
+</script>
+{% endblock %}

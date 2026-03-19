@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}打卡 - {{ habit.title }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="bi bi-{{ habit.icon }}"></i> {{ habit.title }} - 打卡
+                </h4>
+            </div>
+            <div class="card-body">
+                <div class="mb-4">
+                    <p class="text-muted mb-2">
+                        <i class="bi bi-calendar"></i> {{ habit.frequency|frequency_filter }}
+                        · 目标: {{ habit.target_value }}{{ habit.target_unit }}
+                    </p>
+                    <p class="text-muted">
+                        <i class="bi bi-fire text-warning"></i> 当前连续: {{ habit.get_current_streak() }} 天
+                        · 累计: {{ habit.total_checkins }} 次
+                    </p>
+                    {% if habit.description %}
+                        <p class="mb-0">{{ habit.description }}</p>
+                    {% endif %}
+                </div>
+
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="actual_value" class="form-label">实际完成值（{{ habit.target_unit }}）</label>
+                        <input type="number" class="form-control" id="actual_value" name="actual_value"
+                               value="{{ habit.target_value }}" step="0.1" min="0" required>
+                        <small class="text-muted">记录你实际完成的量</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">备注</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="3"
+                                  placeholder="记录心得、感受或任何想法..."></textarea>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check2"></i> 确认打卡
+                        </button>
+                        <a href="{{ url_for('habits.list_habits') }}" class="btn btn-outline-secondary">取消</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

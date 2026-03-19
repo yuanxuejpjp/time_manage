@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block title %}编辑固定日程 - 时间掌控者{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0"><i class="bi bi-pencil"></i> 编辑固定日程</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="title" class="form-label">活动名称 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="title" name="title"
+                               value="{{ schedule.title }}" required>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="day_of_week" class="form-label">星期 <span class="text-danger">*</span></label>
+                            <select class="form-select" id="day_of_week" name="day_of_week" required>
+                                <option value="0" {% if schedule.day_of_week == 0 %}selected{% endif %}>周一</option>
+                                <option value="1" {% if schedule.day_of_week == 1 %}selected{% endif %}>周二</option>
+                                <option value="2" {% if schedule.day_of_week == 2 %}selected{% endif %}>周三</option>
+                                <option value="3" {% if schedule.day_of_week == 3 %}selected{% endif %}>周四</option>
+                                <option value="4" {% if schedule.day_of_week == 4 %}selected{% endif %}>周五</option>
+                                <option value="5" {% if schedule.day_of_week == 5 %}selected{% endif %}>周六</option>
+                                <option value="6" {% if schedule.day_of_week == 6 %}selected{% endif %}>周日</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="start_time" class="form-label">开始时间 <span class="text-danger">*</span></label>
+                            <input type="time" class="form-control" id="start_time" name="start_time"
+                                   value="{{ schedule.start_time|time_filter }}" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="end_time" class="form-label">结束时间 <span class="text-danger">*</span></label>
+                            <input type="time" class="form-control" id="end_time" name="end_time"
+                                   value="{{ schedule.end_time|time_filter }}" required>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="category" class="form-label">分类</label>
+                            <input type="text" class="form-control" id="category" name="category" value="{{ schedule.category }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="location" class="form-label">地点</label>
+                            <input type="text" class="form-control" id="location" name="location" value="{{ schedule.location or '' }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="color" class="form-label">颜色标记</label>
+                            <select class="form-select" id="color" name="color">
+                                <option value="primary" {% if schedule.color == 'primary' %}selected{% endif %}>蓝色</option>
+                                <option value="success" {% if schedule.color == 'success' %}selected{% endif %}>绿色</option>
+                                <option value="warning" {% if schedule.color == 'warning' %}selected{% endif %}>橙色</option>
+                                <option value="danger" {% if schedule.color == 'danger' %}selected{% endif %}>红色</option>
+                                <option value="info" {% if schedule.color == 'info' %}selected{% endif %}>青色</option>
+                                <option value="dark" {% if schedule.color == 'dark' %}selected{% endif %}>灰色</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="start_date" class="form-label">开始日期</label>
+                            <input type="date" class="form-control" id="start_date" name="start_date"
+                                   value="{{ schedule.start_date|date_filter }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="end_date" class="form-label">结束日期</label>
+                            <input type="date" class="form-control" id="end_date" name="end_date"
+                                   value="{{ schedule.end_date|date_filter if schedule.end_date else '' }}">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">描述</label>
+                        <textarea class="form-control" id="description" name="description" rows="2">{{ schedule.description or '' }}</textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="reminder_minutes" class="form-label">提前提醒</label>
+                        <input type="number" class="form-control" id="reminder_minutes" name="reminder_minutes"
+                               value="{{ schedule.reminder_minutes }}" min="0" step="5">
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save"></i> 保存
+                        </button>
+                        <a href="{{ url_for('fixed.list_schedules') }}" class="btn btn-outline-secondary">取消</a>
+                        <form method="POST" action="{{ url_for('fixed.toggle_schedule', schedule_id=schedule.id) }}">
+                            <button type="submit" class="btn btn-outline-warning">
+                                <i class="bi bi-{% if schedule.is_active %}pause{% else %}play{% endif %}"></i>
+                                {% if schedule.is_active %}暂停{% else %}启用{% endif %}
+                            </button>
+                        </form>
+                        <form method="POST" action="{{ url_for('fixed.delete_schedule', schedule_id=schedule.id) }}"
+                              onsubmit="return confirm('确定删除此固定日程？')">
+                            <button type="submit" class="btn btn-outline-danger">删除</button>
+                        </form>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

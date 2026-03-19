@@ -1,0 +1,326 @@
+{% extends "base.html" %}
+
+{% block title %}习惯打卡 - 时间掌控者{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="bi bi-check-circle"></i> 习惯打卡</h2>
+            <div>
+                <a href="{{ url_for('habits.calendar_view') }}" class="btn btn-outline-primary me-2">
+                    <i class="bi bi-calendar3"></i> 日历视图
+                </a>
+                <a href="{{ url_for('habits.stats') }}" class="btn btn-outline-primary">
+                    <i class="bi bi-graph-up"></i> 统计分析
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 今日习惯打卡 -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-sun"></i> 今日习惯</h5>
+            </div>
+            <div class="card-body">
+                {% if today_habits %}
+                    <div class="row">
+                        {% for item in today_habits %}
+                            <div class="col-md-6 col-lg-4 mb-3">
+                                <div class="card h-100 {% if item.checked %}border-success{% endif %}">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <div>
+                                                <h6 class="mb-1">
+                                                    <i class="bi bi-{{ item.habit.icon }}"></i>
+                                                    {{ item.habit.title }}
+                                                </h6>
+                                                <small class="text-muted">
+                                                    {{ item.habit.frequency|frequency_filter }} ·
+                                                    目标: {{ item.habit.target_value }}{{ item.habit.target_unit }}
+                                                </small>
+                                            </div>
+                                            {% if item.checked %}
+                                                <span class="badge bg-success">
+                                                    <i class="bi bi-check2"></i> 已完成
+                                                </span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">待完成</span>
+                                            {% endif %}
+                                        </div>
+
+                                        {% if item.habit.description %}
+                                            <p class="small text-muted mb-2">{{ item.habit.description }}</p>
+                                        {% endif %}
+
+                                        <div class="mb-2">
+                                            <span class="badge bg-secondary">{{ item.habit.category }}</span>
+                                            <span class="badge bg-info">
+                                                <i class="bi bi-fire"></i> {{ item.habit.get_current_streak() }}天
+                                            </span>
+                                        </div>
+
+                                        <div class="mt-3">
+                                            {% if item.checked %}
+                                                <form method="POST" action="{{ url_for('habits.undo_checkin', habit_id=item.habit.id) }}">
+                                                    <button type="submit" class="btn btn-sm btn-outline-warning">
+                                                        <i class="bi bi-x-circle"></i> 取消打卡
+                                                    </button>
+                                                </form>
+                                            {% else %}
+                                                <a href="{{ url_for('habits.checkin', habit_id=item.habit.id) }}"
+                                                   class="btn btn-sm btn-primary">
+                                                    <i class="bi bi-check2"></i> 立即打卡
+                                                </a>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-inbox text-muted" style="font-size: 3rem;"></i>
+                        <p class="text-muted mt-3">今天没有需要完成的习惯</p>
+                        <p class="text-muted">创建你的第一个习惯吧！</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 所有习惯列表 -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-list-stars"></i> 我的习惯</h5>
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addHabitModal">
+                    <i class="bi bi-plus-lg"></i> 添加习惯
+                </button>
+            </div>
+            <div class="card-body">
+                {% if habits %}
+                    <div class="row">
+                        {% for habit in habits %}
+                            <div class="col-md-6 col-lg-4 mb-3">
+                                <div class="card h-100">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <h6 class="card-title mb-0">
+                                                <i class="bi bi-{{ habit.icon }}"></i> {{ habit.title }}
+                                            </h6>
+                                            <div class="dropdown">
+                                                <button class="btn btn-sm btn-link" data-bs-toggle="dropdown">
+                                                    <i class="bi bi-three-dots"></i>
+                                                </button>
+                                                <ul class="dropdown-menu">
+                                                    <li>
+                                                        <a class="dropdown-item" href="{{ url_for('habits.edit_habit', habit_id=habit.id) }}">
+                                                            <i class="bi bi-pencil"></i> 编辑
+                                                        </a>
+                                                    </li>
+                                                    <li>
+                                                        <form method="POST" action="{{ url_for('habits.toggle_habit', habit_id=habit.id) }}">
+                                                            <button type="submit" class="dropdown-item">
+                                                                <i class="bi bi-{% if habit.is_active %}pause{% else %}play{% endif %}"></i>
+                                                                {% if habit.is_active %}暂停{% else %}启用{% endif %}
+                                                            </button>
+                                                        </form>
+                                                    </li>
+                                                    <li><hr class="dropdown-divider"></li>
+                                                    <li>
+                                                        <form method="POST" action="{{ url_for('habits.delete_habit', habit_id=habit.id) }}"
+                                                              onsubmit="return confirm('确定删除此习惯？')">
+                                                            <button type="submit" class="dropdown-item text-danger">
+                                                                <i class="bi bi-trash"></i> 删除
+                                                            </button>
+                                                        </form>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                        </div>
+
+                                        {% if habit.description %}
+                                            <p class="card-text small text-muted">{{ habit.description }}</p>
+                                        {% endif %}
+
+                                        <div class="mb-2">
+                                            <span class="badge bg-secondary">{{ habit.category }}</span>
+                                            <span class="badge bg-info">{{ habit.frequency|frequency_filter }}</span>
+                                        </div>
+
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <small class="text-muted">目标: {{ habit.target_value }}{{ habit.target_unit }}</small>
+                                                <br>
+                                                <small class="text-muted">累计: {{ habit.total_checkins }} 次</small>
+                                            </div>
+                                            <div class="text-end">
+                                                <div class="text-primary">
+                                                    <i class="bi bi-fire text-warning"></i> {{ habit.get_current_streak() }}天
+                                                </div>
+                                                <small class="text-muted">连续打卡</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-star text-muted" style="font-size: 4rem;"></i>
+                        <p class="text-muted mt-3">还没有创建任何习惯</p>
+                        <p class="text-muted">创建习惯，让好习惯成为生活的一部分！</p>
+                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addHabitModal">
+                            <i class="bi bi-plus-lg"></i> 创建第一个习惯
+                        </button>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 添加习惯模态框 -->
+<div class="modal fade" id="addHabitModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-plus-circle"></i> 添加新习惯</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('habits.add_habit') }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="title" class="form-label">习惯名称 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="title" name="title" required>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="category" class="form-label">分类</label>
+                            <input type="text" class="form-control" id="category" name="category" list="habit-categories"
+                                   value="运动">
+                            <datalist id="habit-categories">
+                                <option value="运动">
+                                <option value="学习">
+                                <option value="阅读">
+                                <option value="冥想">
+                                <option value="早起">
+                                <option value="健康饮食">
+                                <option value="其他">
+                            </datalist>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="icon" class="form-label">图标</label>
+                            <select class="form-select" id="icon" name="icon">
+                                <option value="star">⭐ 星星</option>
+                                <option value="heart">❤️ 爱心</option>
+                                <option value="fire">🔥 火焰</option>
+                                <option value="lightning">⚡ 闪电</option>
+                                <option value="sun">☀️ 太阳</option>
+                                <option value="moon">🌙 月亮</option>
+                                <option value="book">📚 书本</option>
+                                <option value="bicycle">🚴 自行车</option>
+                                <option value="droplet">💧 水滴</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="description" class="form-label">描述</label>
+                        <textarea class="form-control" id="description" name="description" rows="2"
+                                  placeholder="简单描述这个习惯的目标..."></textarea>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="frequency" class="form-label">频率</label>
+                            <select class="form-select" id="frequency" name="frequency" onchange="toggleWeeklyDays()">
+                                <option value="daily">每天</option>
+                                <option value="weekdays">工作日</option>
+                                <option value="weekends">周末</option>
+                                <option value="weekly">每周指定天</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="target_value" class="form-label">目标值</label>
+                            <input type="number" class="form-control" id="target_value" name="target_value"
+                                   value="1" step="0.1" min="0.1">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="target_unit" class="form-label">单位</label>
+                            <input type="text" class="form-control" id="target_unit" name="target_unit" value="次"
+                                   list="unit-list">
+                            <datalist id="unit-list">
+                                <option value="次">
+                                <option value="分钟">
+                                <option value="小时">
+                                <option value="页">
+                                <option value="章">
+                                <option value="公里">
+                            </datalist>
+                        </div>
+                    </div>
+
+                    <div id="weekly-days-container" class="mb-3" style="display: none;">
+                        <label class="form-label">选择星期</label>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="target_days" value="0" id="day0">
+                                <label class="form-check-label" for="day0">周一</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="target_days" value="1" id="day1">
+                                <label class="form-check-label" for="day1">周二</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="target_days" value="2" id="day2">
+                                <label class="form-check-label" for="day2">周三</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="target_days" value="3" id="day3">
+                                <label class="form-check-label" for="day3">周四</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="target_days" value="4" id="day4">
+                                <label class="form-check-label" for="day4">周五</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="target_days" value="5" id="day5">
+                                <label class="form-check-label" for="day5">周六</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="target_days" value="6" id="day6">
+                                <label class="form-check-label" for="day6">周日</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">创建</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleWeeklyDays() {
+    const frequency = document.getElementById('frequency').value;
+    const weeklyDaysContainer = document.getElementById('weekly-days-container');
+    weeklyDaysContainer.style.display = frequency === 'weekly' ? 'block' : 'none';
+}
+</script>
+{% endblock %}

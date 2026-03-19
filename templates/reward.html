@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+
+{% block title %}奖励中心 - 时间掌控者{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2 class="mb-4"><i class="bi bi-trophy"></i> 奖励中心</h2>
+    </div>
+</div>
+
+<!-- 分类进度概览 -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-bar-chart-steps"></i> 分类时长统计</h5>
+            </div>
+            <div class="card-body">
+                {% if progress_list %}
+                    <div class="row">
+                        {% for progress in progress_list %}
+                            <div class="col-md-4 col-sm-6 mb-3">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h6 class="card-title">{{ progress.category }}</h6>
+                                        <h3 class="text-primary">{{ progress.total_hours|round(1) }}h</h3>
+                                        <small class="text-muted">累计时长</small>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-muted text-center py-3">还没有任何记录，开始完成任务来积累进度吧！</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 添加奖励规则 -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-plus-circle"></i> 添加奖励规则</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('reward.add_reward') }}" class="row g-3">
+                    <div class="col-md-3">
+                        <input type="text" class="form-control" name="title" placeholder="奖励名称" required>
+                    </div>
+                    <div class="col-md-3">
+                        <input type="text" class="form-control" name="category" placeholder="分类（如：运动）" list="reward-categories">
+                        <datalist id="reward-categories">
+                            <option value="上课">
+                            <option value="科研">
+                            <option value="投资研究">
+                            <option value="运动">
+                            <option value="语言">
+                            <option value="自习">
+                        </datalist>
+                    </div>
+                    <div class="col-md-2">
+                        <input type="number" class="form-control" name="target_hours" placeholder="目标小时" step="1" min="1" required>
+                    </div>
+                    <div class="col-md-3">
+                        <input type="text" class="form-control" name="description" placeholder="描述（可选）">
+                    </div>
+                    <div class="col-md-1">
+                        <button type="submit" class="btn btn-primary w-100">添加</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 奖励列表 -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-list-check"></i> 奖励目标</h5>
+                <form method="POST" action="{{ url_for('reward.check_achievements') }}" class="d-inline">
+                    <button type="submit" class="btn btn-sm btn-outline-success">
+                        <i class="bi bi-arrow-clockwise"></i> 检查达成状态
+                    </button>
+                </form>
+            </div>
+            <div class="card-body">
+                {% if rewards %}
+                    <div class="row">
+                        {% for reward in rewards %}
+                            <div class="col-md-6 col-lg-4 mb-4">
+                                <div class="card reward-card h-100 {% if reward.is_achieved %}reward-achieved{% endif %}">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <h5 class="card-title">{{ reward.title }}</h5>
+                                            {% if reward.is_achieved %}
+                                                <span class="badge bg-success">
+                                                    <i class="bi bi-check-circle"></i> 已达成
+                                                </span>
+                                            {% elif reward.is_redeemed %}
+                                                <span class="badge bg-secondary">已兑现</span>
+                                            {% else %}
+                                                <span class="badge bg-info">进行中</span>
+                                            {% endif %}
+                                        </div>
+
+                                        {% if reward.description %}
+                                            <p class="card-text text-muted small">{{ reward.description }}</p>
+                                        {% endif %}
+
+                                        <div class="mb-2">
+                                            <span class="badge bg-secondary">{{ reward.category }}</span>
+                                            <span class="text-muted">目标: {{ reward.target_hours }}h</span>
+                                        </div>
+
+                                        {% if not reward.is_redeemed %}
+                                            {% set progress = progress_list|selectattr('category', 'equalto', reward.category)|first %}
+                                            {% if progress %}
+                                                <div class="progress mb-2" style="height: 15px;">
+                                                    <div class="progress-bar {% if progress.total_hours >= reward.target_hours %}bg-success{% else %}bg-primary{% endif %}"
+                                                         role="progressbar"
+                                                         style="width: {{ (progress.total_hours / reward.target_hours * 100)|round }}%">
+                                                        {{ progress.total_hours|round(1) }}h
+                                                    </div>
+                                                </div>
+                                                <small class="text-muted">
+                                                    {{ (progress.total_hours / reward.target_hours * 100)|round }}% 完成
+                                                </small>
+                                            {% else %}
+                                                <div class="progress mb-2" style="height: 15px;">
+                                                    <div class="progress-bar bg-primary" role="progressbar" style="width: 0%">0h</div>
+                                                </div>
+                                                <small class="text-muted">0% 完成</small>
+                                            {% endif %}
+                                        {% endif %}
+                                    </div>
+
+                                    {% if not reward.is_redeemed %}
+                                        <div class="card-footer bg-white border-top">
+                                            {% if reward.is_achieved %}
+                                                {% if not reward.is_redeemed %}
+                                                    <form method="POST" action="{{ url_for('reward.mark_redeemed', reward_id=reward.id) }}">
+                                                        <button type="submit" class="btn btn-success w-100">
+                                                            <i class="bi bi-gift"></i> 标记已兑现
+                                                        </button>
+                                                    </form>
+                                                {% endif %}
+                                            {% else %}
+                                                <form method="POST" action="{{ url_for('reward.mark_achieved', reward_id=reward.id) }}">
+                                                    <button type="submit" class="btn btn-outline-success w-100"
+                                                            {% if progress and progress.total_hours < reward.target_hours %}disabled{% endif %}>
+                                                        <i class="bi bi-check2"></i> 标记达成
+                                                    </button>
+                                                </form>
+                                            {% endif %}
+                                            <form method="POST" action="{{ url_for('reward.delete_reward', reward_id=reward.id) }}"
+                                                  class="mt-2" onsubmit="return confirm('确定删除此奖励？')">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger w-100">删除</button>
+                                            </form>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-gift text-muted" style="font-size: 4rem;"></i>
+                        <p class="text-muted mt-3">还没有设置任何奖励</p>
+                        <p class="text-muted">设置奖励可以激励自己更好地完成目标！</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

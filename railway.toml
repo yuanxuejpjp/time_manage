@@ -1,0 +1,13 @@
+[build]
+builder = "NIXPACKS"
+
+[deploy]
+startCommand = "gunicorn app:app"
+healthcheckPath = "/"
+
+[service]
+environment = ["PORT=5000"]
+
+[[service.deps]]
+name = "timemaster-db"
+type = "POSTGRES"
