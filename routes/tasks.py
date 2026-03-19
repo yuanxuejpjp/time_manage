@@ -1,7 +1,111 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required, current_user
 from datetime import datetime
-from models import db, Task
+from models import db, Task, Schedule, Feedback
+
+def check_task_status_by_deadline(task):
+    """根据时间期限检查任务状态（精确到天，手动完成优先）
+    
+    规则：
+    1. 如果用户手动点击"完成"按钮（completed_at 有值），保持 completed 状态
+    2. 如果是自动判断的：
+       - deadline 已过（今天日期 > deadline日期），标记为 completed
+       - deadline 未到（今天日期 <= deadline日期），标记为 pending
+    
+    用户可以通过修改 deadline 来改变非手动完成的任务状态：
+    - 延长 deadline 到未来 → 任务变回 pending
+    - 缩短 deadline 到过去 → 任务变为 completed
+    """
+    if not task.deadline:
+        return False
+    
+    # 如果用户手动完成（通过按钮），不自动改变状态
+    # 除非用户修改了 deadline
+    if task.status == 'completed' and task.completed_at:
+        # 检查是否需要根据新的 deadline 改回 pending
+        today = datetime.now().date()
+        deadline_date = task.deadline.date() if hasattr(task.deadline, 'date') else task.deadline
+        
+        # 只有当 deadline 改到未来，才允许从 completed 改回 pending
+        if today <= deadline_date:
+            # 用户延长了 deadline，允许变回 pending
+            task.status = 'pending'
+            # 保留 completed_at 作为历史记录，或者清空
+            # 这里清空，因为已经不是完成状态
+            task.completed_at = None
+            return True
+        return False
+    
+    # 自动判断逻辑（精确到天）
+    today = datetime.now().date()
+    deadline_date = task.deadline.date() if hasattr(task.deadline, 'date') else task.deadline
+    
+    if today > deadline_date:
+        # deadline 已过（以天为单位），应该已完成
+        if task.status != 'completed':
+            task.status = 'completed'
+            # 自动完成的不设置 completed_at，或者设置一个标记
+            # 这里设置 completed_at 但后续判断时会根据 deadline 变化改回
+            task.completed_at = datetime.now()
+            return True
+    else:
+        # deadline 未到（以天为单位），应该未完成
+        if task.status != 'pending':
+            task.status = 'pending'
+            task.completed_at = None
+            return True
+    return False
+
+def get_task_actual_hours(task):
+    """获取任务的实际已完成时长"""
+    total_hours = 0
+    schedules = Schedule.query.filter_by(task_id=task.id).all()
+    for sched in schedules:
+        if sched.status == 'completed':
+            # 计算日程时长
+            duration = (datetime.combine(sched.date, sched.end_time) - 
+                       datetime.combine(sched.date, sched.start_time)).total_seconds() / 3600
+            total_hours += duration
+    return total_hours
+
+def check_task_status_by_hours(task):
+    """根据预计耗时检查任务状态（手动完成优先）
+    
+    规则：
+    1. 如果用户手动点击"完成"按钮（completed_at 有值），保持 completed 状态
+    2. 如果是自动判断的：
+       - 实际耗时 >= estimated_hours，标记为 completed
+       - 实际耗时 < estimated_hours，标记为 pending
+    """
+    # 如果用户手动完成，不自动改变
+    if task.status == 'completed' and task.completed_at:
+        return False
+    
+    actual_hours = get_task_actual_hours(task)
+    if actual_hours >= task.estimated_hours:
+        if task.status != 'completed':
+            task.status = 'completed'
+            task.completed_at = datetime.now()
+            return True
+    else:
+        # 实际耗时不足，如果之前是自动完成的，改回 pending
+        if task.status == 'completed':
+            task.status = 'pending'
+            task.completed_at = None
+            return True
+    return False
+
+def update_task_status(task):
+    """综合判断任务状态
+    
+    优先级：
+    1. 如果有 deadline，优先根据 deadline 判断
+    2. 如果没有 deadline，根据 estimated_hours 判断
+    """
+    if task.deadline:
+        return check_task_status_by_deadline(task)
+    else:
+        return check_task_status_by_hours(task)
 
 tasks_bp = Blueprint('tasks', __name__)
 
@@ -15,7 +119,20 @@ def list_tasks():
     category_filter = request.args.get('category', '')
     sort_by = request.args.get('sort', 'deadline')
 
-    # 构建查询
+    # 先获取所有任务（不过滤状态，因为要自动更新）
+    all_tasks = Task.query.filter_by(user_id=current_user.id).all()
+    
+    # 自动更新所有任务状态
+    has_changes = False
+    for task in all_tasks:
+        if update_task_status(task):
+            has_changes = True
+    
+    if has_changes:
+        db.session.commit()
+        flash('部分任务状态已根据时间期限/耗时自动更新', 'info')
+
+    # 重新构建查询（可能已经提交，需要重新查询）
     query = Task.query.filter_by(user_id=current_user.id)
 
     if status_filter:
@@ -79,6 +196,9 @@ def new_task():
                 task.deadline = None
         else:
             task.deadline = None
+        
+        # 自动更新任务状态（根据 deadline 和耗时）
+        update_task_status(task)
 
         # 重复设置
         is_recurring = request.form.get('is_recurring') == 'on'
@@ -157,10 +277,13 @@ def edit_task(task_id):
             task.recurring_type = None
             task.recurring_days = None
             task.recurring_end_date = None
+        
+        # 自动更新任务状态（根据 deadline 和耗时）
+        update_task_status(task)
 
         try:
             db.session.commit()
-            flash('任务更新成功', 'success')
+            flash('任务更新成功（状态已根据时间期限/耗时自动更新）', 'success')
             return redirect(url_for('tasks.list_tasks'))
         except Exception as e:
             db.session.rollback()
