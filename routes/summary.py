@@ -404,8 +404,33 @@ def view_summary(summary_id):
 
     # 获取图表数据
     category_stats = summary.get_category_stats()
+    
+    # 获取当天完成的日程（如果是日报）
+    completed_schedules = []
+    if summary.summary_type == 'daily':
+        completed_schedules = Schedule.query.filter(
+            Schedule.user_id == current_user.id,
+            Schedule.date == summary.start_date,
+            Schedule.status.in_(['completed', 'partial'])
+        ).order_by(Schedule.start_time).all()
+        
+        # 获取对应的反馈数据
+        schedule_ids = [s.id for s in completed_schedules]
+        feedbacks = Feedback.query.filter(
+            Feedback.schedule_id.in_(schedule_ids)
+        ).all() if schedule_ids else []
+        
+        # 构建反馈字典
+        feedback_dict = {fb.schedule_id: fb for fb in feedbacks}
+        
+        # 为每个日程添加反馈信息
+        for sched in completed_schedules:
+            sched.feedback_info = feedback_dict.get(sched.id)
 
-    return render_template('summary.html', summary=summary, category_stats=category_stats)
+    return render_template('summary.html', 
+                         summary=summary, 
+                         category_stats=category_stats,
+                         completed_schedules=completed_schedules)
 
 
 @summary_bp.route('/<int:summary_id>/notes', methods=['POST'])
